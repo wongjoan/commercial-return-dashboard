@@ -1,8 +1,39 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "functions": {
+    "api/app.py": { "includeFiles": "api/_lib/**", "maxDuration": 10 }
+  },
+  "redirects": [
+    { "source": "/api/_lib/:path*", "destination": "/login", "permanent": false },
+    { "source": "/data/:path*", "destination": "/login", "permanent": false },
+    { "source": "/scripts/:path*", "destination": "/login", "permanent": false },
+    { "source": "/tests/:path*", "destination": "/login", "permanent": false },
+    { "source": "/supabase/:path*", "destination": "/login", "permanent": false }
+  ],
   "rewrites": [
+    { "source": "/login", "destination": "/login.html" },
     { "source": "/employee", "destination": "/employee-dashboard.html" },
-    { "source": "/employer", "destination": "/index.html" }
+    { "source": "/employer", "destination": "/index.html" },
+    { "source": "/dashboard", "destination": "/index.html" },
+    { "source": "/architecture", "destination": "/architecture.html" },
+    { "source": "/api/:route*", "destination": "/api/app?route=:route*" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "no-store" }]
+    }
   ]
 }

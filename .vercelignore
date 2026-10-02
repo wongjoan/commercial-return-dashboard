@@ -1,0 +1,9 @@
+# Never deploy source datasets, runtime state, tooling or tests.
+# Patterns are anchored with a leading "/" so that api/_lib/data/ (the server-side seed) is NOT excluded.
+/data/
+/scripts/
+/tests/
+/dev_server.py
+/.claude/
+/deploy-to-github.*
+**/__pycache__/

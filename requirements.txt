@@ -1,0 +1,2 @@
+# API runtime uses the Python standard library only.
+# scripts/build_seed.py (offline, not deployed) additionally needs: openpyxl

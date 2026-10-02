@@ -4,427 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Commercial Return Dashboard — Prototype</title>
-<style>
-  :root { color-scheme: light; }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body {
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    background: var(--page-plane);
-  }
-
-  .viz-root {
-    color-scheme: light;
-    --surface-1:      #fcfcfb;
-    --page-plane:     #f9f9f7;
-    --text-primary:   #0b0b0b;
-    --text-secondary: #52514e;
-    --text-muted:     #898781;
-    --gridline:       #e1e0d9;
-    --baseline:       #c3c2b7;
-    --border:         rgba(11,11,11,0.10);
-    --success-text:   #006300;
-
-    --series-1: #2570cc; /* blue      -> Revenue / Sales dept (darkened slightly from #2a78d6 so it clears 4.5:1 as text, e.g. gov-edit-btn) */
-    --series-2: #eb6834; /* orange    -> NGP / Product Mgmt dept */
-    --series-3: #1baf7a; /* aqua      -> EBITDA / Consulting dept */
-    --series-4: #eda100; /* yellow    -> Sales Support dept */
-    --series-5: #e87ba4; /* magenta   -> Delivery dept */
-
-    --seq-100: #cde2fb; --seq-450: #2a78d6;
-
-    --status-good:     #0ca30c;
-    --status-warning:  #fab219;
-    --status-serious:  #ec835a;
-    --status-critical: #d03b3b;
-
-    background: var(--page-plane);
-    color: var(--text-primary);
-    min-height: 100vh;
-  }
-  .viz-root[data-theme="dark"], .viz-root.theme-dark {
-    color-scheme: dark;
-    --surface-1:      #1a1a19;
-    --page-plane:     #0d0d0d;
-    --text-primary:   #ffffff;
-    --text-secondary: #c3c2b7;
-    --text-muted:     #898781;
-    --gridline:       #2c2c2a;
-    --baseline:       #383835;
-    --border:         rgba(255,255,255,0.10);
-    --success-text:   #0ca30c;
-
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
-    --series-4: #c98500;
-    --series-5: #d55181;
-  }
-
-  header.app-header {
-    display: flex; align-items: flex-start; justify-content: space-between;
-    gap: 16px; padding: 24px 28px 16px; max-width: 1240px; margin: 0 auto;
-  }
-  header.app-header h1 { font-size: 20px; margin: 0 0 4px; font-weight: 650; }
-  header.app-header .sub { color: var(--text-secondary); font-size: 13px; margin: 0; }
-  header.app-header .tag {
-    display: inline-block; margin-top: 8px; font-size: 11px; padding: 3px 8px;
-    border-radius: 20px; background: var(--surface-1); border: 1px solid var(--border);
-    color: var(--text-muted);
-  }
-  .theme-toggle {
-    border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
-    border-radius: 8px; padding: 7px 12px; font-size: 12px; cursor: pointer; white-space: nowrap;
-  }
-  .theme-toggle:hover { color: var(--text-primary); }
-
-  .tabs-row {
-    max-width: 1240px; margin: 0 auto; padding: 0 28px;
-    display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    border-bottom: 1px solid var(--gridline); flex-wrap: wrap;
-  }
-  nav.tabs {
-    display: flex; gap: 4px; flex-wrap: wrap; flex: 1 1 auto; min-width: 0;
-  }
-  nav.tabs button {
-    appearance: none; border: none; background: none; padding: 10px 14px; font-size: 13.5px;
-    font-weight: 550; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-  }
-  nav.tabs button:hover { color: var(--text-primary); }
-  nav.tabs button[aria-selected="true"] { color: var(--text-primary); border-bottom-color: var(--series-1); }
-
-  .filter-row {
-    max-width: 1240px; margin: 0 auto; padding: 14px 28px 0; display: flex;
-    align-items: center; gap: 10px; flex-wrap: wrap;
-  }
-  .filter-row .label { font-size: 12px; color: var(--text-muted); margin-right: 2px; }
-  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-  .seg button {
-    appearance: none; border: none; background: var(--surface-1); color: var(--text-secondary);
-    padding: 6px 12px; font-size: 12.5px; cursor: pointer; border-right: 1px solid var(--border);
-  }
-  .seg button:last-child { border-right: none; }
-  .seg button[aria-pressed="true"] { background: var(--series-1); color: #fff; }
-  .chip {
-    border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
-    padding: 5px 11px; border-radius: 20px; font-size: 12px; cursor: pointer;
-  }
-  .chip[aria-pressed="true"] { background: var(--text-primary); color: var(--surface-1); border-color: var(--text-primary); }
-
-  main { max-width: 1240px; margin: 0 auto; padding: 18px 28px 60px; }
-  .view[hidden] { display: none; }
-
-  .grid { display: grid; gap: 14px; }
-  .grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
-  .grid.cols-2 { grid-template-columns: 1.4fr 1fr; }
-  .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
-  @media (max-width: 920px) {
-    .grid.cols-4 { grid-template-columns: repeat(2, 1fr); }
-    .grid.cols-2 { grid-template-columns: 1fr; }
-    .grid.cols-3 { grid-template-columns: 1fr; }
-  }
-
-  .card {
-    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
-    padding: 16px 18px;
-  }
-  .card h3 { font-size: 13.5px; margin: 0 0 2px; font-weight: 650; }
-  .card .card-sub { font-size: 11.5px; color: var(--text-muted); margin: 0 0 12px; }
-  .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-  .table-toggle {
-    border: none; background: none; color: var(--text-muted); font-size: 11px; cursor: pointer;
-    text-decoration: underline; text-underline-offset: 2px;
-  }
-  .table-toggle:hover { color: var(--text-primary); }
-
-  /* Stat tile */
-  .stat-tile .label { font-size: 12px; color: var(--text-secondary); margin: 0 0 6px; }
-  .stat-tile .value { font-size: 26px; font-weight: 650; font-variant-numeric: proportional-nums; }
-  .stat-tile .delta { font-size: 12px; margin-top: 4px; }
-  .stat-tile .delta.good { color: var(--success-text); }
-  .stat-tile .delta.bad { color: var(--status-critical); }
-  .stat-tile .delta.flat { color: var(--text-muted); }
-
-  /* Legend */
-  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; }
-  .legend .item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); background:none; border:none; cursor:pointer; padding:0; }
-  .legend .swatch { width: 16px; height: 3px; border-radius: 2px; display: inline-block; }
-  .legend .swatch.rect { width: 10px; height: 10px; border-radius: 2px; }
-  .legend .item[data-off="true"] { opacity: .35; }
-
-  svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
-  .axis-label { fill: var(--text-muted); font-size: 10.5px; }
-  .grid-line { stroke: var(--gridline); stroke-width: 1; }
-  .baseline { stroke: var(--baseline); stroke-width: 1; }
-
-  .tooltip {
-    position: fixed; pointer-events: none; z-index: 50; background: var(--surface-1);
-    border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,.14); opacity: 0; transition: opacity .08s ease; min-width: 140px;
-  }
-  .tooltip.show { opacity: 1; }
-  .tooltip .t-title { color: var(--text-secondary); font-size: 11px; margin-bottom: 4px; }
-  .tooltip .t-row { display: flex; align-items: center; gap: 6px; justify-content: space-between; padding: 1px 0; }
-  .tooltip .t-key { display: flex; align-items: center; gap: 5px; color: var(--text-secondary); }
-  .tooltip .t-line { width: 10px; height: 2px; display: inline-block; border-radius: 1px; }
-  .tooltip .t-val { font-weight: 650; color: var(--text-primary); font-variant-numeric: tabular-nums; }
-
-  /* Table */
-  table.data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  table.data-table th {
-    text-align: left; font-weight: 600; color: var(--text-muted); font-size: 11px;
-    text-transform: uppercase; letter-spacing: .02em; padding: 7px 10px; border-bottom: 1px solid var(--gridline);
-    white-space: nowrap;
-  }
-  table.data-table td { padding: 8px 10px; border-bottom: 1px solid var(--gridline); vertical-align: middle; }
-  table.data-table td.num, table.data-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
-  table.data-table tbody tr:hover { background: rgba(128,128,128,0.06); }
-  table.data-table caption { text-align: left; caption-side: bottom; font-size: 11px; color: var(--text-muted); padding-top: 6px; }
-
-  /* Meter */
-  .meter-wrap { display: flex; align-items: center; gap: 8px; min-width: 130px; }
-  .meter-track { flex: 1; height: 6px; border-radius: 4px; background: var(--gridline); overflow: hidden; }
-  .meter-fill { height: 100%; border-radius: 4px; }
-  .meter-val { font-size: 11.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
-
-  /* Badge / status */
-  .badge {
-    display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
-    padding: 3px 8px; border-radius: 20px; white-space: nowrap;
-  }
-  .badge.good { color: var(--status-good); background: color-mix(in srgb, var(--status-good) 14%, transparent); }
-  .badge.warning { color: #8a6300; background: color-mix(in srgb, var(--status-warning) 22%, transparent); }
-  .badge.critical { color: var(--status-critical); background: color-mix(in srgb, var(--status-critical) 14%, transparent); }
-  .viz-root[data-theme="dark"] .badge.warning, .viz-root.theme-dark .badge.warning { color: #ffd980; }
-  .badge .dot { width: 7px; height: 7px; border-radius: 50%; }
-  .badge.good .dot { background: var(--status-good); }
-  .badge.warning .dot { background: var(--status-warning); }
-  .badge.critical .dot { background: var(--status-critical); }
-
-  .flag-list { display: flex; flex-direction: column; gap: 10px; }
-  .flag-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--gridline); }
-  .flag-item:last-child { border-bottom: none; padding-bottom: 0; }
-  .flag-item .who { font-size: 13px; font-weight: 600; }
-  .flag-item .why { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
-  .flag-item .action { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; }
-
-  .pay-pill { font-size: 10.5px; padding: 2px 7px; border-radius: 10px; border: 1px solid var(--border); color: var(--text-secondary); white-space: nowrap; }
-
-  .attr-bar { display: flex; height: 22px; border-radius: 5px; overflow: hidden; }
-  .attr-seg { display: flex; align-items: center; justify-content: center; font-size: 10.5px; color: #fff; font-weight: 600; }
-  .attr-legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; font-size: 11px; color: var(--text-secondary); }
-  .attr-legend .sw { width: 9px; height: 9px; border-radius: 2px; display: inline-block; margin-right: 5px; }
-
-  .proj-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
-  .proj-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
-  .proj-head h4 { margin: 0; font-size: 14px; }
-  .proj-meta { font-size: 11.5px; color: var(--text-muted); }
-  .proj-stats { display: flex; gap: 22px; flex-wrap: wrap; margin: 10px 0; }
-  .proj-stats div .k { font-size: 10.5px; color: var(--text-muted); }
-  .proj-stats div .v { font-size: 14px; font-weight: 650; }
-
-  .method-block { margin-bottom: 22px; }
-  .method-block h3 { font-size: 14px; margin-bottom: 6px; }
-  .method-block p, .method-block li { font-size: 13px; color: var(--text-secondary); line-height: 1.55; }
-  .method-block ul { margin: 6px 0; padding-left: 18px; }
-
-  .callout { border: 1px solid var(--border); border-left: 3px solid var(--text-primary); border-radius: 8px; padding: 12px 14px; margin-bottom: 22px; background: var(--page-plane); }
-  .callout h3 { font-size: 13px; margin: 0 0 6px; }
-  .callout p, .callout li { font-size: 12.5px; color: var(--text-secondary); line-height: 1.55; margin: 4px 0; }
-  .callout ul { margin: 4px 0; padding-left: 18px; }
-  .callout b { color: var(--text-primary); }
-
-  .hr-case-row select, .hr-case-row input[type="text"] {
-    font: inherit; font-size: 12px; padding: 5px 7px; border-radius: 6px; border: 1px solid var(--border);
-    background: var(--surface-1); color: var(--text-primary); width: 100%;
-  }
-  .hr-flag-pill { display: inline-block; font-size: 10.5px; padding: 2px 7px; border-radius: 10px; margin: 1px 3px 1px 0; white-space: nowrap; }
-  .hr-flag-pill.pay-equity { color: var(--status-warning); background: color-mix(in srgb, var(--status-warning) 22%, transparent); }
-  .hr-flag-pill.income-volatility { color: var(--status-critical); background: color-mix(in srgb, var(--status-critical) 14%, transparent); }
-  .hr-flag-pill.performance { color: var(--status-critical); background: color-mix(in srgb, var(--status-critical) 14%, transparent); }
-  .chip.mgmt-approve[aria-pressed="true"] { background: var(--status-good); color: #fff; border-color: var(--status-good); }
-  .chip.mgmt-decline[aria-pressed="true"] { background: var(--text-muted); color: var(--surface-1); border-color: var(--text-muted); }
-
-  /* Manager-facing simple view: plain-language cards, one-click approve/dismiss */
-  .mgr-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  @media (max-width: 760px) { .mgr-grid { grid-template-columns: 1fr; } }
-  .mgr-card { border: 1px solid var(--border); border-radius: 10px; padding: 13px 15px; }
-  .mgr-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-  .mgr-card-head .who { font-size: 13.5px; font-weight: 650; }
-  .mgr-card-head .proj-meta { margin-top: 1px; }
-  .mgr-reasons { margin: 9px 0; padding-left: 18px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
-  .mgr-reasons li { margin-bottom: 2px; }
-  .mgr-actions { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
-  .mgr-approve-btn { border: 1px solid var(--series-1); background: var(--series-1); color: #fff; font-weight: 650; border-radius: 7px; padding: 6px 12px; font-size: 12px; cursor: pointer; }
-  .mgr-dismiss-btn { border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); border-radius: 7px; padding: 6px 12px; font-size: 12px; cursor: pointer; }
-  .mgr-dismiss-btn:hover { color: var(--text-primary); }
-  .mgr-reviewed-note { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
-  .mgr-reconsider-btn { border: none; background: none; color: var(--series-1); font-size: 12px; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; padding: 0; }
-  .formula {
-    font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: 12.5px;
-    background: var(--page-plane); border: 1px solid var(--border); border-radius: 8px;
-    padding: 10px 12px; margin: 8px 0; color: var(--text-primary);
-  }
-
-  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-
-  /* ---------------- governance modal ---------------- */
-  .modal-overlay {
-    position: fixed; inset: 0; background: rgba(11,11,11,0.45); z-index: 100;
-    display: flex; align-items: flex-start; justify-content: center; padding: 4vh 16px; overflow-y: auto;
-  }
-  .modal-overlay[hidden] { display: none; }
-  .modal-card {
-    background: var(--surface-1); border-radius: 14px; width: 100%; max-width: 620px;
-    box-shadow: 0 20px 60px rgba(0,0,0,.28); border: 1px solid var(--border);
-    display: flex; flex-direction: column; max-height: 92vh;
-  }
-  .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 22px 14px; }
-  .modal-head h2 { margin: 0 0 6px; font-size: 17px; color: var(--text-primary); }
-  .modal-sub { margin: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
-  .modal-close {
-    border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
-    width: 30px; height: 30px; border-radius: 8px; font-size: 16px; cursor: pointer; flex: none;
-    display: flex; align-items: center; justify-content: center; line-height: 1;
-  }
-  .modal-close:hover { color: var(--text-primary); }
-  .modal-divider { border-top: 1px solid var(--gridline); margin: 0 22px; }
-  .modal-body { padding: 18px 22px 22px; overflow-y: auto; }
-
-  .gov-active-note { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin: 4px 0 22px; }
-  .gov-version-tag {
-    font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; color: var(--text-primary); background: var(--page-plane);
-    border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; font-size: 12px;
-  }
-
-  .gov-step { display: flex; gap: 12px; margin-bottom: 6px; }
-  .gov-step .step-num {
-    flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--page-plane);
-    border: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; font-weight: 700;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .gov-step-title { font-size: 14.5px; font-weight: 650; color: var(--text-primary); margin: 2px 0 2px; }
-  .gov-step-body { flex: 1; min-width: 0; }
-  .gov-step-help { font-size: 11.5px; color: var(--text-muted); margin: 2px 0 12px; }
-
-  .gov-select {
-    width: 100%; appearance: none; border: 1px solid var(--border); background: var(--page-plane);
-    color: var(--text-primary); border-radius: 9px; padding: 10px 34px 10px 12px; font-size: 14px; font-family: inherit;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%23898781'/></svg>");
-    background-repeat: no-repeat; background-position: right 12px center;
-  }
-
-  .gov-weight-head { display: grid; grid-template-columns: 1fr 64px 1fr 46px; gap: 10px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-muted); padding-bottom: 4px; border-bottom: 1px solid var(--gridline); margin-bottom: 4px; }
-  .gov-weight-row { display: grid; grid-template-columns: 1fr 64px 1fr 46px; align-items: center; gap: 10px; padding: 7px 0; }
-  .gov-weight-row .role-name { font-size: 13px; color: var(--text-primary); }
-  .gov-weight-input {
-    width: 100%; border: 1px solid var(--border); background: var(--page-plane); border-radius: 7px;
-    padding: 6px; font-size: 13px; text-align: center; color: var(--text-primary); font-family: inherit;
-  }
-  .gov-share-track { height: 6px; border-radius: 4px; background: var(--gridline); overflow: hidden; }
-  .gov-share-fill { height: 100%; border-radius: 4px; }
-  .gov-share-pct { font-size: 12.5px; color: var(--text-secondary); text-align: right; font-variant-numeric: tabular-nums; }
-
-  .gov-breakdown { background: var(--page-plane); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin: 14px 0 18px; }
-  .gov-breakdown-title { font-size: 11.5px; color: var(--text-muted); margin: 0 0 8px; }
-  .gov-bd-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; font-size: 13px; }
-  .gov-bd-row .amt { font-weight: 650; color: var(--text-primary); font-variant-numeric: tabular-nums; }
-  .gov-bd-row .delta { font-size: 11.5px; min-width: 70px; text-align: right; font-variant-numeric: tabular-nums; }
-  .gov-bd-row .delta.up { color: var(--status-good); }
-  .gov-bd-row .delta.down { color: var(--status-critical); }
-  .gov-bd-row .delta.flat { color: var(--text-muted); }
-
-  .gov-radio-card {
-    border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px; margin-bottom: 8px; cursor: pointer;
-    display: flex; gap: 10px; align-items: flex-start;
-  }
-  .gov-radio-card.selected { background: color-mix(in srgb, var(--series-1) 10%, var(--surface-1)); border-color: var(--series-1); }
-  .gov-radio-card input { margin-top: 3px; }
-  .gov-radio-card .rt { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
-  .gov-radio-card .rs { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
-
-  .gov-reason-label { font-size: 13px; font-weight: 600; color: var(--text-primary); margin: 16px 0 6px; }
-  .gov-reason {
-    width: 100%; border: 1px solid var(--border); background: var(--page-plane); border-radius: 9px;
-    padding: 9px 11px; font-size: 13px; font-family: inherit; color: var(--text-primary); resize: vertical; min-height: 52px;
-  }
-
-  .gov-checklist { margin: 18px 0 14px; display: flex; flex-direction: column; gap: 7px; }
-  .gov-check-row { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; }
-  .gov-check-icon { flex: none; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
-  .gov-check-row.pass { color: var(--text-secondary); }
-  .gov-check-row.pass .gov-check-icon { color: var(--status-good); }
-  .gov-check-row.pending { color: var(--text-muted); }
-  .gov-check-row.pending .gov-check-icon { color: var(--text-muted); }
-  .gov-check-row.fail { color: var(--status-critical); }
-  .gov-check-row.fail .gov-check-icon { color: var(--status-critical); }
-
-  .gov-register-btn { width: 100%; border: none; border-radius: 10px; padding: 13px; font-size: 14px; font-weight: 650; cursor: pointer; margin-top: 4px; }
-  .gov-register-btn.enabled { background: var(--series-1); color: #fff; }
-  .gov-register-btn.disabled { background: var(--gridline); color: var(--text-muted); cursor: not-allowed; }
-
-  .gov-success {
-    background: color-mix(in srgb, var(--status-good) 12%, var(--surface-1)); border: 1px solid var(--status-good);
-    color: var(--text-primary); border-radius: 9px; padding: 10px 13px; font-size: 12.5px; margin-bottom: 16px;
-  }
-
-  .gov-history { margin-top: 20px; border-top: 1px solid var(--gridline); padding-top: 14px; }
-  .gov-history-title { font-size: 11.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .03em; margin: 0 0 8px; }
-  .gov-hist-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--gridline); font-size: 12.5px; gap: 10px; }
-  .gov-hist-row:last-child { border-bottom: none; }
-  .gov-hist-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
-  .gov-hist-reason { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .gov-hist-tag { flex: none; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; text-transform: uppercase; letter-spacing: .02em; }
-  .gov-hist-tag.active { background: color-mix(in srgb, var(--status-good) 16%, transparent); color: var(--status-good); }
-  .gov-hist-tag.upcoming { background: color-mix(in srgb, var(--series-1) 16%, transparent); color: var(--series-1); }
-  .gov-hist-tag.superseded { background: var(--gridline); color: var(--text-muted); }
-  .gov-hist-tag.pending { background: color-mix(in srgb, var(--status-warning) 22%, transparent); color: #8a6300; }
-  .viz-root[data-theme="dark"] .gov-hist-tag.pending, .viz-root.theme-dark .gov-hist-tag.pending { color: #ffd980; }
-  .gov-hist-approvals { font-size: 11.5px; color: var(--text-secondary); margin: 4px 0 8px; padding-left: 2px; }
-  .gov-approve-btn {
-    border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary); font-weight: 600;
-    border-radius: 6px; padding: 3px 9px; font-size: 11px; cursor: pointer; margin: 2px 6px 2px 0;
-  }
-  .gov-approve-btn:hover { background: var(--page-plane); }
-  .gov-approve-btn.done { color: var(--status-good); border-color: var(--status-good); cursor: default; }
-
-  .gov-whatif-note { font-size: 11.5px; color: var(--text-muted); margin: 2px 0 10px; line-height: 1.5; }
-  .gov-whatif-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--gridline); font-size: 12.5px; }
-  .gov-whatif-row:last-child { border-bottom: none; }
-  .gov-whatif-head { font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-muted); border-bottom: 1px solid var(--gridline); padding-bottom: 4px; }
-  .gov-whatif-row .amt { text-align: right; font-variant-numeric: tabular-nums; }
-  .gov-whatif-row .delta { text-align: right; font-variant-numeric: tabular-nums; }
-  .gov-whatif-row .delta.up { color: var(--status-good); }
-  .gov-whatif-row .delta.down { color: var(--status-critical); }
-  .gov-whatif-row .delta.flat { color: var(--text-muted); }
-
-  .gov-audit { margin-top: 18px; border-top: 1px solid var(--gridline); padding-top: 12px; }
-  .gov-audit-title { font-size: 11.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .03em; margin: 0 0 8px; }
-  .gov-audit-row { font-size: 11.5px; color: var(--text-secondary); padding: 3px 0; display: flex; gap: 8px; }
-  .gov-audit-row .ts { color: var(--text-muted); font-variant-numeric: tabular-nums; flex: none; }
-
-  .gov-edit-btn {
-    border: 1px solid var(--border); background: var(--surface-1); color: var(--series-1); font-weight: 600;
-    border-radius: 7px; padding: 5px 11px; font-size: 12px; cursor: pointer; white-space: nowrap;
-  }
-  .gov-edit-btn:hover { background: var(--page-plane); }
-
-  .header-controls { display: flex; align-items: center; gap: 10px; }
-
-  .gov-header-badge {
-    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary);
-    border: 1px solid var(--border); background: var(--surface-1); padding: 6px 10px; border-radius: 8px; white-space: nowrap;
-  }
-  .gov-header-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--status-good); flex: none; }
-  .gov-header-btn {
-    border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary); font-weight: 600;
-    border-radius: 8px; padding: 7px 13px; font-size: 12.5px; cursor: pointer; white-space: nowrap;
-  }
-  .gov-header-btn:hover { background: var(--page-plane); }
-  #govToolbar { display: flex; align-items: center; gap: 10px; flex: none; padding: 6px 0; }
-  @media (max-width: 920px) { #govToolbar { width: 100%; order: 99; padding: 0 0 8px; } }
-</style>
+<link rel="stylesheet" href="assets/base.css">
+<link rel="stylesheet" href="assets/gc.css">
 </head>
 <body>
 <div class="viz-root" id="root">
@@ -432,22 +13,29 @@
   <header class="app-header">
     <div>
       <h1>Commercial Return Dashboard</h1>
-      <p class="sub">Meridian Tech Solutions (illustrative) — revenue-to-collection performance, cost coverage &amp; shared-contribution attribution</p>
-      <span class="tag">Illustrative data · DXP Stage 2 prototype</span>
+      <p class="sub" id="scopeLine">Glocomp commercial team — performance, ROI and contribution visibility</p>
+      <span class="tag">Anonymised demo data · role-based view · prototype</span>
     </div>
     <div class="header-controls">
-      <a class="gov-header-btn" id="toEmployeeLink" href="employee-dashboard.html" target="_blank" rel="noopener" style="text-decoration:none;">Employee dashboard →</a>
+      <span class="user-chip" id="userChip">Signing in…</span>
+      <a class="gov-header-btn" id="toEmployeeLink" href="/employee" style="text-decoration:none;" hidden>My performance →</a>
       <button class="theme-toggle" id="themeToggle" type="button">Switch to dark</button>
+      <button class="btn" id="logoutBtn" type="button">Sign out</button>
     </div>
   </header>
 
   <div class="tabs-row">
     <nav class="tabs" role="tablist" aria-label="Dashboard views">
-      <button role="tab" aria-selected="true" data-view="company">Company</button>
+      <button role="tab" aria-selected="false" data-view="company">Company</button>
       <button role="tab" aria-selected="false" data-view="departments">Departments</button>
-      <button role="tab" aria-selected="false" data-view="individuals">Individuals</button>
+      <button role="tab" aria-selected="false" data-view="roi">ROI &amp; Cost</button>
+      <button role="tab" aria-selected="false" data-view="individuals">Individuals (pay)</button>
+      <button role="tab" aria-selected="false" data-view="performance">Performance</button>
       <button role="tab" aria-selected="false" data-view="hr">HR Intervention</button>
-      <button role="tab" aria-selected="false" data-view="projects">Projects (project-based view)</button>
+      <button role="tab" aria-selected="false" data-view="weights">KPI Weightage</button>
+      <button role="tab" aria-selected="false" data-view="ai_kpi">AI KPI Assistant</button>
+      <button role="tab" aria-selected="false" data-view="projects">Projects</button>
+      <button role="tab" aria-selected="false" data-view="access">Access &amp; Security</button>
       <button role="tab" aria-selected="false" data-view="methodology">Methodology</button>
     </nav>
     <div id="govToolbar">
@@ -523,7 +111,7 @@
 
     <!-- DEPARTMENTS VIEW -->
     <section class="view" id="view-departments" hidden>
-      <div class="card" style="margin-bottom:14px;">
+      <div class="card" style="margin-bottom:14px;" id="deptChartCard">
         <div class="card-head">
           <div>
             <h3>Attributed NGP vs. employment cost, by department</h3>
@@ -563,8 +151,8 @@
       <div class="card">
         <div class="card-head">
           <div>
-            <h3>Individual compensation records</h3>
-            <p class="card-sub">All 64 commercial staff, from the Glocomp employee roster · base salary, variable pay and OTE are real; HR flags are computed live from these figures; KPI achievement is a simulated score (no real actuals supplied) — see Methodology, section 3 and section 9</p>
+            <h3>Individual compensation records <span class="level-pill">Director only</span></h3>
+            <p class="card-sub">All 64 commercial staff (fictional names; pay structure and amounts from the supplied roster) · KPI score uses each person's current weightage · ROI on the full quarterly cost base · pay-equity and income-volatility flags are HR-sensitive and only shown at this level. Click a name for the scorecard.</p>
           </div>
           <input type="text" id="indivSearch" placeholder="Search name or role…" style="font:inherit;font-size:12.5px;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--page-plane);color:var(--text-primary);min-width:200px;">
         </div>
@@ -580,8 +168,8 @@
       <div class="filter-row" style="padding:0 0 12px;">
         <span class="label">View</span>
         <div class="seg" role="group" aria-label="HR tab view mode" id="hrViewModeSeg">
-          <button type="button" data-hrmode="simple" aria-pressed="true">Simple (for managers)</button>
-          <button type="button" data-hrmode="detail" aria-pressed="false">Detailed (for HR)</button>
+          <button type="button" data-hrmode="simple" aria-pressed="true">Case cards (for managers)</button>
+          <button type="button" data-hrmode="detail" aria-pressed="false">Tracker (for HR)</button>
         </div>
       </div>
 
@@ -590,30 +178,57 @@
       <div class="card" style="margin-bottom:14px;">
         <div class="card-head">
           <div>
-            <h3 id="hrCardTitle">Employees who may need a look</h3>
-            <p class="card-sub" id="hrCardSub">Plain-language summary, for approving whether HR should follow up — no percentages or statistics to interpret</p>
+            <h3 id="hrCardTitle">Performance gaps that need a decision</h3>
+            <p class="card-sub" id="hrCardSub"></p>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             <button type="button" class="chip" id="hrExportBtn">Download case log (CSV)</button>
-            <label class="chip" style="cursor:pointer;">Import case log (CSV)<input type="file" id="hrImportInput" accept=".csv" style="display:none;"></label>
-            <span id="hrImportStatus" style="font-size:11.5px;color:var(--text-muted);"></span>
           </div>
         </div>
-        <p class="card-sub" style="margin:-6px 0 12px;">This build can't reach a backend, and browser storage isn't available where this dashboard is hosted — so CSV export/import is the persistence mechanism: download before you close the tab, import to pick back up later or hand off to a colleague.</p>
-        <div id="hrManagerCards"></div>
+        <div id="hrManagerCards"><p class="loading">Loading cases…</p></div>
         <div id="hrDetailWrap" hidden style="overflow-x:auto;">
           <table class="data-table" id="hrCaseTable"></table>
         </div>
       </div>
 
+      <div class="card" style="margin-bottom:14px;"><h3>Team engagement themes</h3><p class="card-sub">Synthetic pulse survey, aggregated for everyone in your scope (n ≥ 5) — context for whether a gap is individual or environmental</p><div id="hrThemes"></div></div>
+
       <div class="callout">
-        <h3>What this tab can and can't do yet</h3>
-        <p><b>Two ways to look at the same list:</b> "Simple (for managers)" turns each flag into a plain sentence with a recommended next step and an escalation control — no statistics to interpret. "Detailed (for HR)" shows the same people with the full pay-band graphic and an editable stage/owner/notes case tracker. Either view can open the full detailed report, or export/import the same CSV.</p>
-        <p><b>Escalation path, not a one-shot label:</b> a case moves Flagged → department manager → senior manager → executive review, where the decision is to continue the intervention or end employment. The suggested starting stage is driven by how many consecutive quarters the issue has shown up — every stage move is still a manual action, never automatic.</p>
-        <p><b>Real, from the data provided:</b> pay-equity outliers (base salary materially below the role median) and income-volatility exposure (commission staff heavily dependent on variable pay) — both computed directly from the real compensation columns.</p>
-        <p><b>Estimated, clearly labeled:</b> the "Performance" flag, the financial/non-financial breakdown in the detailed report, and "quarters flagged" all come from the same simulated KPI score used elsewhere in this dashboard (see Methodology, section 10) — no real order logs, SLA timers, survey ratings, timesheets or quarterly history were in the dataset, so this demonstrates that a performance signal can drive real recommendations and an escalation path, not that it measures anyone's actual work yet.</p>
-        <p><b>Would need more data for a Phase 2:</b> attrition/retention risk scoring (needs tenure and exit history), engagement or manager-relationship signals (needs survey or 1:1 data), workload/burnout indicators (needs hours or ticket-volume data), the real actuals and real quarterly history behind the Performance flag, and a real backend for the case tracker with approvals and notifications (needs a server and, likely, HRIS write-back — this prototype's tracker is in-memory, exportable to CSV so work isn't lost between sessions).</p>
+        <h3>How this workflow works</h3>
+        <p><b>Not a label — a chain of evidence:</b> performance gap → the KPI causing it → possible cause (4-quarter pattern, peer comparison, leading indicators, and for HR/Executive review the employee's own survey signals) → a suggested improvement action → manager review (an agreed action plan and review date) → escalation if the gap persists.</p>
+        <p><b>Escalation path:</b> Manager → Senior Manager → Executive / HR review. A manager can record a plan, escalate or resolve while the case is with them; once escalated, only the senior manager (then the Director/HR) can act. The suggested stage comes from how many consecutive quarters the score has been below 75% — every stage move is a manual, audit-logged action.</p>
+        <p><b>Confidentiality:</b> individual pulse/onboarding survey answers and pay-related flags are shown only at Executive/HR review level. Managers and senior managers see team-level survey themes only, and only for groups of 5 or more. Employees never see case stages or notes; their own page shows an "improvement focus" instead.</p>
+        <p><b>Persistence:</b> cases are stored server-side (no more CSV import); the CSV download remains for hand-off and offline review.</p>
       </div>
+    </section>
+
+    <!-- PERFORMANCE VIEW -->
+    <section class="view" id="view-performance" hidden>
+      <div id="perfContent"><p class="loading">Loading scorecards…</p></div>
+    </section>
+
+    <!-- ROI & COST VIEW -->
+    <section class="view" id="view-roi" hidden>
+      <div class="callout">
+        <h3>ROI on the full employee cost base</h3>
+        <p><b>Return</b> = attributed NGP (Sales: own closed-won NGP; other functions: the department's attributed NGP share, weighted by financial KPI attainment). <b>Total cost</b> = salary + variable pay (commission earned or bonus accrual) + approved expense claims (client entertainment, travel, other sales expenses, training) + other employment costs (employer statutory contributions, benefits, tools). <b>ROI</b> = (Return − Total cost) ÷ Total cost. Every person has their own cost structure.</p>
+      </div>
+      <div id="roiContent"><p class="loading">Loading ROI…</p></div>
+    </section>
+
+    <!-- KPI WEIGHTAGE VIEW -->
+    <section class="view" id="view-weights" hidden>
+      <div id="weightsContent"><p class="loading">Loading weightage configuration…</p></div>
+    </section>
+
+    <!-- AI KPI ASSISTANT VIEW -->
+    <section class="view" id="view-ai_kpi" hidden>
+      <div id="aiContent"><p class="loading">Loading team…</p></div>
+    </section>
+
+    <!-- ACCESS & SECURITY VIEW -->
+    <section class="view" id="view-access" hidden>
+      <div id="accessContent"><p class="loading">Loading…</p></div>
     </section>
 
     <!-- PROJECTS VIEW -->
@@ -626,10 +241,10 @@
     <section class="view" id="view-methodology" hidden>
       <div class="callout">
         <h3>What's real vs. illustrative in this build</h3>
-        <p><b>Two separate dashboards, not one app with a role switch:</b> this page is the employer/management dashboard (Company, Departments, Individuals, HR Intervention, Projects, Governance, Methodology). An employee's own view — their comp, overall and detailed performance score, attributed deal pool and peer pay band — lives on its own standalone page, linked from "Employee dashboard →" in the header above, so it can be opened, shared and demoed independently of this one.</p>
-        <p><b>Real, from Glocomp_Employee_Data.xlsx:</b> the 64-person headcount and department split in the Individuals and HR Intervention tabs; every base salary, bonus/commission amount, OTE and pay structure shown; the non-financial KPI formulas in section 3 below; the pay-equity and income-volatility flags (section 8, section 9).</p>
-        <p><b>Simulated, clearly labeled wherever it appears:</b> every "KPI achievement" badge and the "(sim.)" figures behind it (section 10) — no real operational actuals (order logs, SLA timers, survey ratings, timesheets) were supplied, so these are deterministic mock scores standing in for the real formulas in section 3, not measurements of any person's actual performance.</p>
-        <p><b>Illustrative, pending real deal-level financials:</b> revenue, NGP, EBITDA, collections, the department cost/coverage figures and margin waterfall on the Company, Departments and Projects tabs, the attribution-governance mechanics in section 6, and the attributed deal pool on the separate employee dashboard — the department headcounts driving them already match the real roster, but no deal-level revenue or cost data was provided to replace the financial model itself.</p>
+        <p><b>One app, four hierarchy levels:</b> Director, Senior Manager, Manager and Employee each sign in and see only what their level allows — enforced by the server, not by hiding things in the page. Everyone who is scored also has "My performance" (their own scorecard, with no pay information).</p>
+        <p><b>Anonymised:</b> names are fictional. Role, department, pay structure and pay amounts follow the supplied commercial roster; each person is linked to a synthetic HR record (tenure, location, pulse/onboarding surveys) from the supplied dummy HR dataset.</p>
+        <p><b>Dummy, deterministic:</b> KPI targets, actuals and 4-quarter history, expense claims, statutory/benefit costs and individual attributed NGP. The KPI <i>definitions</i> in section 3 are Glocomp's real formulas.</p>
+        <p><b>Illustrative, pending real deal-level financials:</b> company revenue/NGP/EBITDA/collections, department attributed NGP, projects and the attribution-governance mechanics in section 6.</p>
       </div>
 
       <div class="method-block">
@@ -640,19 +255,11 @@
       </div>
 
       <div class="method-block">
-        <h3>2. Role-based KPI templates</h3>
-        <p>Each role has an approved KPI template — a fixed set of weighted measures agreed with the function head. Actuals are scored against target per measure, then combined into one weighted achievement percentage per person, per period. This is what "KPI achievement" means everywhere in this dashboard. The mix behind that one number is different per function — only Sales is scored mostly on revenue; functions that don't carry a quota are weighted mostly on non-financial measures instead:</p>
-        <table class="data-table">
-          <thead><tr><th>Role</th><th>Basis</th><th>Measures &amp; weights</th><th>Why</th></tr></thead>
-          <tbody>
-            <tr><td>Sales</td><td>Mostly financial</td><td>Revenue 40% · NGP 30% · Collections 20% · Non-financial 10%</td><td>Quota-carrying and closest to the money</td></tr>
-            <tr><td>Product Management</td><td>Mixed</td><td>Attributed NGP 35% · Deal-support win rate 25% · Roadmap delivery on time 20% · Sales-enablement response SLA 20%</td><td>Influences deals without owning them</td></tr>
-            <tr><td>Consulting</td><td>Mostly non-financial</td><td>Scoping accuracy 30% · Utilisation rate 25% · Delivery quality score 25% · On-time scoping turnaround 20%</td><td>No sales quota — measured on whether estimates and delivery hold up</td></tr>
-            <tr><td>Sales Support</td><td>Mostly non-financial</td><td>Turnaround SLA 30% · Order/contract accuracy 30% · Renewal admin completion 20% · Internal CSAT 20%</td><td>Operational backbone — speed and accuracy, not revenue they don't generate</td></tr>
-            <tr><td>Delivery</td><td>Mixed</td><td>Project margin 30% · On-time delivery rate 25% · Client satisfaction/quality score 25% · Collections/DSO influence 20%</td><td>Owns post-close execution — margin and collections matter, but so does quality and timeliness</td></tr>
-          </tbody>
-        </table>
-        <p class="card-sub" style="margin-top:8px;">All weights are illustrative — the real numbers would be agreed with each function head before rollout, same as the deal-type attribution templates in section 6.</p>
+        <h3>2. Role-based KPI templates and weightage</h3>
+        <p>Each role has a KPI template: a financial vs. non-financial split, and KPI weights inside each group (each group sums to 100%). Templates are <b>stored configuration, not code</b> — see the KPI Weightage tab. The Director can change any role, Senior Managers the roles in their departments; a Manager can agree an individual split (within ±15 points of the template) and individual targets with a team member. Employees see their weightage but cannot change it. Every change needs a reason, can be previewed, and is audit-logged.</p>
+        <div class="formula">KPI points = group weight × KPI weight in group × min(actual ÷ target, 100%)      Overall = financial points + non-financial points
+e.g. Financial 60% × Revenue 50% = 30 pts possible; 91.6% of target → 27.5 pts</div>
+        <p>Default splits (illustrative starting points to agree with function heads): Sales 60/40 · Product Management 35/65 · Delivery 30/70 · Consulting 20/80 · Sales Support 10/90. Click any score in the app to see the full calculation.</p>
       </div>
 
       <div class="method-block">
@@ -689,7 +296,7 @@
 
       <div class="method-block">
         <h3>6. Attribution governance</h3>
-        <p>The templates above aren't a static config file — they're versioned. A change is <b>forward-dated only</b>: it registers a new version that governs deals closing from a future quarter, and it can never rewrite the split a deal already closed under (Rulebook §8.3). Any change that would cut a function's share below what it currently gets needs sign-off before it can register — cutting someone's share isn't a quiet save. Registering a new version is an <b>employer/admin setting</b> — visible to everyone, editable only in "Employer" view (see the toggle top-right, and the "Governance edit" control next to the tabs).</p>
+        <p>The templates above aren't a static config file — they're versioned. A change is <b>forward-dated only</b>: it registers a new version that governs deals closing from a future quarter, and it can never rewrite the split a deal already closed under (Rulebook §8.3). Any change that would cut a function's share below what it currently gets needs sign-off before it can register — cutting someone's share isn't a quiet save. Registering a new version is a <b>Director setting</b> — visible to every management level, editable only by the Director (the "Governance edit" control next to the tabs).</p>
         <table class="data-table" id="govTable"></table>
       </div>
 
@@ -701,40 +308,24 @@
       <div class="method-block">
         <h3>8. What gets auto-flagged</h3>
         <ul>
-          <li>Cost coverage ratio below 1.0× for two consecutive periods (illustrative model)</li>
-          <li>KPI achievement below 70% (individual) for two consecutive periods (illustrative model, pending section 3 actuals)</li>
-          <li>Collections lag beyond the 60-day DSO threshold (illustrative model)</li>
-          <li>Project margin below target with collections also lagging (illustrative model)</li>
-          <li><b>Pay equity</b> — base salary more than 10% below the role median (real data, live on the Individuals and HR Intervention tabs)</li>
-          <li><b>Income volatility</b> — commission staff with over 35% of OTE in variable pay (real data, live on the Individuals and HR Intervention tabs)</li>
-          <li><b>Performance</b> — simulated KPI achievement below 70% (same figure as section 10; live on the HR Intervention tab only, feeding the management approval cards there)</li>
+          <li><b>Performance gap</b> — overall score below 70%; or 70–80% with a heavily weighted KPI under 85% of target; or a score that has declined four quarters running (HR Intervention tab, for the employee's management chain)</li>
+          <li><b>Pay equity</b> — base salary more than 10% below the role median (Director/HR only)</li>
+          <li><b>Income volatility</b> — commission staff with over 35% of OTE in variable pay (Director/HR only)</li>
+          <li>Cost coverage below 1.0× and project margin/collections issues (Company and Projects tabs, illustrative model)</li>
         </ul>
       </div>
 
       <div class="method-block">
         <h3>9. HR intervention workflow</h3>
-        <p>The HR Intervention tab is the one part of this dashboard built directly from the client's ask for "HR intervention" features. It has two views of the same flagged list, switchable at the top of the tab:</p>
-        <ul>
-          <li><b>Simple (for managers)</b> — each flagged employee is a card with plain-language reasons ("paid about 12% less than others in the same role," not a percentile chart), a recommended next step (which specific measure to address, drawn from the financial and non-financial breakdown), and the case's current escalation stage — never just a good/bad label.</li>
-          <li><b>Detailed (for HR)</b> — the same people, with the full pay-band graphic (P25/median/P75), the underlying flag detail, and an editable escalation Stage, Owner and Notes field.</li>
-        </ul>
-        <p>Either view can open a full <b>detailed report</b> per person (a modal, in place of a separate window) breaking the case down into its financial component, its named non-financial measure with actual vs. target, pay context where relevant, and a full list of recommendations.</p>
-        <p><b>Escalation path:</b> Flagged → with department manager → with senior manager → executive review, where the final call is to continue the intervention or end employment. The starting stage is suggested from a simulated "quarters flagged" count (matching the real-world idea that a one-off dip stays with the department manager, but something recurring for 3-4 quarters should reach senior management or executives) — every move up or down the path, and the final continue/terminate/resolved decision, is a manual action taken from the card or the report.</p>
-        <p>Three checks feed the flagged list:</p>
-        <ul>
-          <li><b>Pay equity check</b> (real data) — for any role with more than one person, flags anyone whose base salary sits over 10% below that role's median. Ten of 64 employees currently clear this line.</li>
-          <li><b>Income volatility check</b> (real data) — for commission-paid staff, flags anyone whose variable pay exceeds 35% of their OTE, since a bad quarter hits their take-home hard. Ten of 24 commission-paid employees currently clear this line.</li>
-          <li><b>Performance check</b> (simulated — see section 10) — flags anyone whose simulated KPI achievement sits below 70%, and is what drives the financial/non-financial recommendation in the detailed report; it is not a real measurement yet, and the report says so.</li>
-        </ul>
-        <p class="card-sub" style="margin-top:8px;">Deliberately not included in this tab: no coaching flag or termination-risk score beyond the disclosed simulated KPI check above is attached to any named employee, because no real tenure or engagement data was supplied. See the callout at the top of this tab for what a fuller build would need. The case tracker itself is in-memory for this session — CSV export/import (including each person's escalation stage, final decision, and estimated quarters flagged) is how work carries over between sessions or gets handed to a colleague.</p>
+        <p>Every case is a chain of evidence, not a label: <b>performance gap → affected KPI → possible cause/context → suggested improvement action → manager review → escalation if required</b>. Causes come from the 4-quarter pattern, a peer comparison (team-wide vs. individual), leading indicators that are also below target and — at Executive/HR review only — the person's own survey signals.</p>
+        <p><b>Escalation:</b> Manager (records an action plan and review date, can escalate or resolve) → Senior Manager (can escalate, return to manager or resolve) → Executive/HR review (resolved · continue structured support · redeploy · end employment). The suggested stage comes from consecutive quarters below 75%; every move is manual and audit-logged. Cases are stored server-side; the CSV download is for hand-off.</p>
       </div>
 
       <div class="method-block">
-        <h3>10. Simulated KPI achievement (Individuals, Departments, employee dashboard)</h3>
-        <p>The "KPI achievement" badges on the Individuals and Departments tabs, and on the separate employee dashboard, turn the section 3 formulas into a number, so they demonstrate the calculation instead of staying purely descriptive. Because no real actuals for those formulas were in the dataset, the figures are a deterministic simulation — the same seed always produces the same number for a given person, so results don't shuffle on every reload, but they are not a measurement of anyone's real performance.</p>
-        <div class="formula">KPI Achievement (sim.) = financial-share × simulated financial score + (1 − financial-share) × simulated score against the section-3 formula</div>
-        <p>The financial share per department matches the illustrative weights in section 2 (e.g. Sales 90% financial, Consulting 0%, Delivery 30%). Thresholds mirror the rest of the dashboard: below 70% is critical, 70–90% is a watch item, above 90% is healthy.</p>
-        <p class="card-sub" style="margin-top:8px;">Every place this figure appears is labeled "(sim.)" or "(simulated)" for exactly this reason — wiring in the real order counts, SLA logs, survey ratings and timesheets behind section 3 would let this become a real, scored number without changing the formula or the UI around it.</p>
+        <h3>10. ROI and AI-assisted KPIs</h3>
+        <div class="formula">ROI = (Return − Total cost) ÷ Total cost
+Return = attributed NGP · Total cost = salary + variable pay + approved expense claims + other employment cost</div>
+        <p>ROI details are on the ROI &amp; Cost tab (individual figures for the Director; aggregates of 5+ people for Senior Managers). AI KPI suggestions are generated from KPI history only and stay "pending review" until a manager edits, accepts and applies them — see the AI KPI Assistant tab and GLOCOMP.md.</p>
       </div>
     </section>
   </main>
@@ -755,21 +346,9 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="hrReportOverlay" hidden>
-    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="hrReportTitle" style="max-width:640px;">
-      <div class="modal-head">
-        <div>
-          <h2 id="hrReportTitle">Detailed performance report</h2>
-          <p class="modal-sub">Financial and non-financial measures behind this case, with recommended next steps — not just a pass/fail label.</p>
-        </div>
-        <button class="modal-close" id="hrReportClose" type="button" aria-label="Close">&times;</button>
-      </div>
-      <div class="modal-divider"></div>
-      <div class="modal-body" id="hrReportBody"></div>
-    </div>
-  </div>
 </div>
 
+<script src="assets/gc.js"></script>
 <script>
 (function () {
   "use strict";
@@ -850,292 +429,39 @@
   function hideTooltip() { tooltipEl.classList.remove("show"); }
 
   /* ---------------- data ---------------- */
-  var monthly = [
-    ["Jan", 2600000, 1144000, 598000, 0.90],
-    ["Feb", 2700000, 1188000, 621000, 0.90],
-    ["Mar", 3100000, 1364000, 713000, 0.92],
-    ["Apr", 3000000, 1320000, 690000, 0.93],
-    ["May", 3300000, 1452000, 759000, 0.93],
-    ["Jun", 3500000, 1540000, 805000, 0.94],
-    ["Jul", 3400000, 1496000, 782000, 0.95],
-    ["Aug", 3500000, 1540000, 805000, 0.95],
-    ["Sep", 3700000, 1628000, 851000, 0.96],
-    ["Oct", 4000000, 1760000, 920000, 0.96],
-    ["Nov", 4300000, 1892000, 989000, 0.97],
-    ["Dec", 4900000, 2156000, 1127000, 0.98]
-  ].map(function (r) { return { label: r[0], revenue: r[1], ngp: r[2], ebitda: r[3], collRate: r[4] }; });
-
-  var quarterly = [
-    ["Q1", 8400000, 3696000, 1932000, 0.92],
-    ["Q2", 9800000, 4312000, 2254000, 0.93],
-    ["Q3", 10600000, 4664000, 2438000, 0.95],
-    ["Q4", 13200000, 5808000, 3036000, 0.97]
-  ].map(function (r) { return { label: r[0], revenue: r[1], ngp: r[2], ebitda: r[3], collRate: r[4] }; });
-
-  var annual = [
-    ["FY2025", 36500000, 15600000, 7900000, 0.912],
-    ["FY2026", 42000000, 18480000, 9660000, 0.946]
-  ].map(function (r) { return { label: r[0], revenue: r[1], ngp: r[2], ebitda: r[3], collRate: r[4] }; });
-
+  // Nothing sensitive is embedded in this page any more. After sign-in, each tab fetches its own endpoint and the
+  // server returns only what the signed-in role may see (see SECURITY.md). A tab the role can't use isn't rendered,
+  // and its endpoint returns 403 even if called directly.
+  var SESSION = null;
+  var monthly = [], quarterly = [], annual = [];
   var periods = { monthly: monthly, quarterly: quarterly, annual: annual };
   var periodSubs = { monthly: "By month, FY2026", quarterly: "By quarter, FY2026", annual: "FY2025 vs. FY2026" };
+  var companyCostTotal = 1; // annualised bottom-up cost base, from /api/company
+  var headcountInfo = { total: 0, bonus: 0, commission: 0 };
+  var departments = [];
+  var individuals = [];
+  var projects = [];
+  var exceptionFlags = [];
 
-  var companyCost = { salary: 3800000, commission: 1550000, benefits: 520000, training: 180000, entertainment: 190000 };
-  var companyCostTotal = 3800000 + 1550000 + 520000 + 180000 + 190000; // 6,240,000 (illustrative)
-
-  var departments = [
-    { name: "Sales", cost: 2550000, ngp: 9240000, headcount: 24, color: "var(--series-1)" },
-    { name: "Product Management", cost: 1050000, ngp: 2770000, headcount: 10, color: "var(--series-2)" },
-    { name: "Consulting", cost: 1300000, ngp: 2770000, headcount: 14, color: "var(--series-3)" },
-    { name: "Sales Support", cost: 680000, ngp: 1850000, headcount: 9, color: "var(--series-4)" },
-    { name: "Delivery", cost: 660000, ngp: 1850000, headcount: 7, color: "var(--series-5)" }
-  ];
-
-  // Real Glocomp headcount (64 employees), from Glocomp_Employee_Data.xlsx "Employee Directory".
-  // Comp structure (base/variable/OTE/split) is real. No real per-person performance data was supplied,
-  // so no KPI/coverage/flag figures are attached to named individuals — see Methodology, section 8.
-  var individuals = [
-    { name: "Michelle Tan", role: "Sales Executive", dept: "Sales", pay: "Commission", base: 49200, variable: 21086, ote: 70286, splitPct: 0.3000 },
-    { name: "Stephanie Gomez", role: "Account Executive", dept: "Sales", pay: "Commission", base: 41200, variable: 26899, ote: 68099, splitPct: 0.3950 },
-    { name: "Liyana Miller", role: "Sales Representative", dept: "Sales", pay: "Commission", base: 45600, variable: 12991, ote: 58591, splitPct: 0.2217 },
-    { name: "Hamzah Teoh", role: "Account Executive", dept: "Sales", pay: "Commission", base: 45400, variable: 11441, ote: 56841, splitPct: 0.2013 },
-    { name: "Kevin Scott", role: "Sales Representative", dept: "Sales", pay: "Commission", base: 46500, variable: 17321, ote: 63821, splitPct: 0.2714 },
-    { name: "Ravi Wong", role: "Sales Representative", dept: "Sales", pay: "Commission", base: 51300, variable: 25132, ote: 76432, splitPct: 0.3288 },
-    { name: "Nicholas Kamal", role: "Account Executive", dept: "Sales", pay: "Commission", base: 44900, variable: 19823, ote: 64723, splitPct: 0.3063 },
-    { name: "Hannah Razak", role: "Account Executive", dept: "Sales", pay: "Commission", base: 46100, variable: 30265, ote: 76365, splitPct: 0.3963 },
-    { name: "Natasha Razak", role: "Account Executive", dept: "Sales", pay: "Commission", base: 50800, variable: 26960, ote: 77760, splitPct: 0.3467 },
-    { name: "Sarah Lee", role: "Account Executive", dept: "Sales", pay: "Commission", base: 51900, variable: 25587, ote: 77487, splitPct: 0.3302 },
-    { name: "Benjamin Jenkins", role: "Sales Representative", dept: "Sales", pay: "Commission", base: 48400, variable: 14820, ote: 63220, splitPct: 0.2344 },
-    { name: "Liyana Gupta", role: "Account Executive", dept: "Sales", pay: "Commission", base: 50100, variable: 31127, ote: 81227, splitPct: 0.3832 },
-    { name: "Zainab Ho", role: "Sales Representative", dept: "Sales", pay: "Commission", base: 50800, variable: 28143, ote: 78943, splitPct: 0.3565 },
-    { name: "Jason Lee", role: "Junior Sales Executive", dept: "Sales", pay: "Commission", base: 55000, variable: 25000, ote: 80000, splitPct: 0.3125 },
-    { name: "Nurul Huda", role: "Junior Sales Executive", dept: "Sales", pay: "Commission", base: 52500, variable: 20000, ote: 72500, splitPct: 0.2759 },
-    { name: "Aisha Aziz", role: "Account Executive", dept: "Sales", pay: "Commission", base: 40500, variable: 11919, ote: 52419, splitPct: 0.2274 },
-    { name: "Syed Harris", role: "Account Executive", dept: "Sales", pay: "Commission", base: 40200, variable: 26476, ote: 66676, splitPct: 0.3971 },
-    { name: "Marcus Anderson", role: "Sales Representative", dept: "Sales", pay: "Commission", base: 40800, variable: 24921, ote: 65721, splitPct: 0.3792 },
-    { name: "Tariq Chan", role: "Account Executive", dept: "Sales", pay: "Commission", base: 41600, variable: 26420, ote: 68020, splitPct: 0.3884 },
-    { name: "Isabella Ahmad", role: "Account Executive", dept: "Sales", pay: "Commission", base: 49200, variable: 27542, ote: 76742, splitPct: 0.3589 },
-    { name: "Priya Nathan", role: "Account Director", dept: "Sales", pay: "Commission", base: 118000, variable: 40000, ote: 158000, splitPct: 0.2532 },
-    { name: "Chung Singh", role: "Account Director", dept: "Sales", pay: "Commission", base: 111800, variable: 67393, ote: 179193, splitPct: 0.3761 },
-    { name: "Ahmad Rizal", role: "Senior Sales Manager", dept: "Sales", pay: "Commission", base: 152000, variable: 98000, ote: 250000, splitPct: 0.3920 },
-    { name: "Lucas Jackson", role: "Sales Manager", dept: "Sales", pay: "Commission", base: 88600, variable: 38975, ote: 127575, splitPct: 0.3055 },
-    { name: "Jason Rizal", role: "CRM Administrator", dept: "Sales Support", pay: "Bonus", base: 53600, variable: 8933, ote: 62533, splitPct: 0.1429 },
-    { name: "Jasmine King", role: "CRM Administrator", dept: "Sales Support", pay: "Bonus", base: 43000, variable: 7167, ote: 50167, splitPct: 0.1429 },
-    { name: "Ethan Harris", role: "CRM Administrator", dept: "Sales Support", pay: "Bonus", base: 43500, variable: 7250, ote: 50750, splitPct: 0.1429 },
-    { name: "Ethan Chan", role: "Sales Support Specialist", dept: "Sales Support", pay: "Bonus", base: 54000, variable: 9000, ote: 63000, splitPct: 0.1429 },
-    { name: "Rachel King", role: "Sales Support Specialist", dept: "Sales Support", pay: "Bonus", base: 42000, variable: 7000, ote: 49000, splitPct: 0.1429 },
-    { name: "Siti King", role: "CRM Administrator", dept: "Sales Support", pay: "Bonus", base: 48600, variable: 8100, ote: 56700, splitPct: 0.1429 },
-    { name: "Chloe Lee", role: "Sales Support Specialist", dept: "Sales Support", pay: "Bonus", base: 54000, variable: 9000, ote: 63000, splitPct: 0.1429 },
-    { name: "Wei Chen Lim", role: "Sales Support Lead", dept: "Sales Support", pay: "Bonus", base: 102600, variable: 17100, ote: 119700, splitPct: 0.1429 },
-    { name: "Priya Kumar", role: "Sales Support Lead", dept: "Sales Support", pay: "Bonus", base: 149500, variable: 24917, ote: 174417, splitPct: 0.1429 },
-    { name: "Clara Zhang", role: "Product Analyst", dept: "Product Management", pay: "Bonus", base: 47100, variable: 7850, ote: 54950, splitPct: 0.1429 },
-    { name: "Stephanie Ahmad", role: "Associate Product Manager", dept: "Product Management", pay: "Bonus", base: 51900, variable: 8650, ote: 60550, splitPct: 0.1429 },
-    { name: "Sarah Ibrahim", role: "Product Analyst", dept: "Product Management", pay: "Bonus", base: 53400, variable: 8900, ote: 62300, splitPct: 0.1429 },
-    { name: "Liam Torres", role: "Associate Product Manager", dept: "Product Management", pay: "Bonus", base: 46200, variable: 7700, ote: 53900, splitPct: 0.1429 },
-    { name: "Farah Rahman", role: "Product Analyst", dept: "Product Management", pay: "Bonus", base: 40300, variable: 6717, ote: 47017, splitPct: 0.1429 },
-    { name: "Wei Chen Yap", role: "Associate Product Manager", dept: "Product Management", pay: "Bonus", base: 51700, variable: 8617, ote: 60317, splitPct: 0.1429 },
-    { name: "Jonathan Anderson", role: "Product Analyst", dept: "Product Management", pay: "Bonus", base: 48600, variable: 8100, ote: 56700, splitPct: 0.1429 },
-    { name: "Amanda Razak", role: "Associate Product Manager", dept: "Product Management", pay: "Bonus", base: 52000, variable: 8667, ote: 60667, splitPct: 0.1429 },
-    { name: "Liyana Kumar", role: "Senior Product Manager", dept: "Product Management", pay: "Bonus", base: 114200, variable: 19033, ote: 133233, splitPct: 0.1429 },
-    { name: "Farah Aziz", role: "Product Manager", dept: "Product Management", pay: "Bonus", base: 94800, variable: 16000, ote: 110800, splitPct: 0.1444 },
-    { name: "Elena Jackson", role: "Senior Consultant", dept: "Consulting", pay: "Bonus", base: 50300, variable: 8383, ote: 58683, splitPct: 0.1429 },
-    { name: "Ivan Yap", role: "Consultant", dept: "Consulting", pay: "Bonus", base: 45600, variable: 7600, ote: 53200, splitPct: 0.1429 },
-    { name: "Lucas Lee", role: "Consultant", dept: "Consulting", pay: "Bonus", base: 43700, variable: 7283, ote: 50983, splitPct: 0.1429 },
-    { name: "Liyana Ooi", role: "Consultant", dept: "Consulting", pay: "Bonus", base: 48700, variable: 8117, ote: 56817, splitPct: 0.1429 },
-    { name: "Daniel Ali", role: "Consultant", dept: "Consulting", pay: "Bonus", base: 51400, variable: 8567, ote: 59967, splitPct: 0.1429 },
-    { name: "Aaliyah Ismail", role: "Consultant", dept: "Consulting", pay: "Bonus", base: 49300, variable: 8217, ote: 57517, splitPct: 0.1429 },
-    { name: "Jason Lee", role: "Presales Consultant", dept: "Consulting", pay: "Bonus", base: 90000, variable: 15000, ote: 105000, splitPct: 0.1429 },
-    { name: "Sarah Selvam", role: "Senior Consultant", dept: "Consulting", pay: "Bonus", base: 53900, variable: 8983, ote: 62883, splitPct: 0.1429 },
-    { name: "Ryan Zhang", role: "Senior Consultant", dept: "Consulting", pay: "Bonus", base: 47700, variable: 7950, ote: 55650, splitPct: 0.1429 },
-    { name: "Amir Voo", role: "Consultant", dept: "Consulting", pay: "Bonus", base: 51100, variable: 8517, ote: 59617, splitPct: 0.1429 },
-    { name: "Sarah Wright", role: "Senior Consultant", dept: "Consulting", pay: "Bonus", base: 41000, variable: 6833, ote: 47833, splitPct: 0.1429 },
-    { name: "Amanda Nathan", role: "Practice Lead", dept: "Consulting", pay: "Bonus", base: 124900, variable: 20817, ote: 145717, splitPct: 0.1429 },
-    { name: "Karthik Selvam", role: "Consulting Manager", dept: "Consulting", pay: "Bonus", base: 90000, variable: 15000, ote: 105000, splitPct: 0.1429 },
-    { name: "Ryan Harris", role: "Consulting Manager", dept: "Consulting", pay: "Bonus", base: 83400, variable: 13900, ote: 97300, splitPct: 0.1429 },
-    { name: "Nicholas Torres", role: "Implementation Executive", dept: "Delivery", pay: "Bonus", base: 41400, variable: 6900, ote: 48300, splitPct: 0.1429 },
-    { name: "Wei Chen Pillai", role: "Implementation Executive", dept: "Delivery", pay: "Bonus", base: 47000, variable: 7833, ote: 54833, splitPct: 0.1429 },
-    { name: "Nicholas Martin", role: "Delivery Specialist", dept: "Delivery", pay: "Bonus", base: 52400, variable: 8733, ote: 61133, splitPct: 0.1429 },
-    { name: "Amir Walker", role: "Delivery Specialist", dept: "Delivery", pay: "Bonus", base: 40900, variable: 6817, ote: 47717, splitPct: 0.1429 },
-    { name: "Jasmine Hassan", role: "Implementation Executive", dept: "Delivery", pay: "Bonus", base: 43100, variable: 7183, ote: 50283, splitPct: 0.1429 },
-    { name: "Daniel Ooi", role: "Delivery Lead", dept: "Delivery", pay: "Bonus", base: 40560, variable: 6760, ote: 47320, splitPct: 0.1429 },
-    { name: "Lucas Sanchez", role: "Delivery Manager", dept: "Delivery", pay: "Bonus", base: 95000, variable: 15833, ote: 110833, splitPct: 0.1429 }
-  ];
-
-  // Derived, objective HR-intervention flags computed live from the real roster above —
-  // no fabricated performance judgements, just arithmetic on real comp-structure fields.
-  var PAY_EQUITY_THRESHOLD = 0.10;   // >10% below own-role median base salary (role must have >1 person)
-  var COMMISSION_DEP_THRESHOLD = 0.35; // >35% of OTE from variable pay, Commission structure only
-  function roleMedianBase(role) {
-    var vals = individuals.filter(function (p) { return p.role === role; }).map(function (p) { return p.base; }).sort(function (a, b) { return a - b; });
-    if (vals.length < 2) return null;
-    var mid = Math.floor(vals.length / 2);
-    return vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
-  }
-  function roleBaseStats(role) {
-    var vals = individuals.filter(function (p) { return p.role === role; }).map(function (p) { return p.base; }).sort(function (a, b) { return a - b; });
-    if (vals.length < 2) return null;
-    function pctile(pc) {
-      var idx = (pc / 100) * (vals.length - 1);
-      var lo = Math.floor(idx), hi = Math.ceil(idx);
-      return vals[lo] + (vals[hi] - vals[lo]) * (idx - lo);
+  function toPeriodRows(rows) { return rows.map(function (r) { return { label: r[0], revenue: r[1], ngp: r[2], ebitda: r[3], collRate: r[4] }; }); }
+  var companyPromise = null;
+  function loadCompany() {
+    if (!companyPromise) {
+      companyPromise = GC.api("/api/company").then(function (d) {
+        monthly = toPeriodRows(d.series.monthly); quarterly = toPeriodRows(d.series.quarterly); annual = toPeriodRows(d.series.annual);
+        periods = { monthly: monthly, quarterly: quarterly, annual: annual };
+        companyCostTotal = d.quarter_cost_base.total_cost * 4;
+        headcountInfo = d.headcount;
+        projects = d.projects;
+        exceptionFlags = d.flags;
+        return d;
+      });
     }
-    return { p25: pctile(25), median: pctile(50), p75: pctile(75), min: vals[0], max: vals[vals.length - 1], n: vals.length };
+    return companyPromise;
   }
-  // Compact inline pay-equity band for a table cell: role P25/median/P75 ticks + this person's marker.
-  function salaryBandCompactHtml(role, base) {
-    var st = roleBaseStats(role);
-    if (!st) return '<span style="color:var(--text-muted);">—</span>';
-    var lo = Math.min(st.min, base) * 0.96, hi = Math.max(st.max, base) * 1.04;
-    function pos(v) { return ((v - lo) / (hi - lo)) * 100; }
-    var title = "P25 RM" + Math.round(st.p25 / 1000) + "K · Median RM" + Math.round(st.median / 1000) + "K · P75 RM" + Math.round(st.p75 / 1000) + "K · This employee RM" + Math.round(base / 1000) + "K (n=" + st.n + ")";
-    return '<div title="' + title + '" style="position:relative;width:112px;height:6px;background:var(--gridline);border-radius:4px;">' +
-      '<div style="position:absolute;left:' + pos(st.p25).toFixed(1) + '%;top:-2px;bottom:-2px;width:1px;background:var(--baseline);"></div>' +
-      '<div style="position:absolute;left:' + pos(st.median).toFixed(1) + '%;top:-3px;bottom:-3px;width:2px;background:var(--text-secondary);"></div>' +
-      '<div style="position:absolute;left:' + pos(st.p75).toFixed(1) + '%;top:-2px;bottom:-2px;width:1px;background:var(--baseline);"></div>' +
-      '<div style="position:absolute;left:' + pos(base).toFixed(1) + '%;top:50%;width:8px;height:8px;border-radius:50%;background:var(--series-1);border:1.5px solid var(--surface-1);transform:translate(-50%,-50%);"></div>' +
-      "</div>";
-  }
-  function companyHeadcountBreakdown() {
-    var out = { total: individuals.length, bonus: 0, commission: 0 };
-    individuals.forEach(function (p) { if (p.pay === "Bonus") out.bonus++; else if (p.pay === "Commission") out.commission++; });
-    return out;
-  }
-  function computeHrFlags(p) {
-    var flags = [];
-    var median = roleMedianBase(p.role);
-    if (median != null) {
-      var pctBelow = (median - p.base) / median;
-      if (pctBelow > PAY_EQUITY_THRESHOLD) flags.push({ id: "pay-equity", label: "Pay equity", detail: "Base " + fmtPct(pctBelow) + " below the " + p.role + " median (RM" + median.toLocaleString() + ")" });
-    }
-    if (p.pay === "Commission" && p.splitPct > COMMISSION_DEP_THRESHOLD) {
-      flags.push({ id: "income-volatility", label: "Income volatility", detail: fmtPct(p.splitPct) + " of OTE is variable pay — above the " + fmtPct(COMMISSION_DEP_THRESHOLD) + " watch line" });
-    }
-    var kpi = computeKpiSim(p);
-    if (kpi.pct < 0.70) {
-      flags.push({ id: "performance", label: "Performance", detail: kpi.metric + " tracking at " + fmtPct(kpi.pct) + " (sim.) — below the 70% watch line" });
-    }
-    return flags;
-  }
-  // Plain-language, no-jargon version of a flag, for the management-facing card view.
-  // Same underlying data as the detailed HR table — just phrased as a sentence instead of a stat.
-  function hrPlainReason(p, f) {
-    if (f.id === "pay-equity") {
-      var median = roleMedianBase(p.role);
-      var pctBelow = median != null ? Math.round(((median - p.base) / median) * 100) : null;
-      return "Paid" + (pctBelow != null ? " about " + pctBelow + "% less" : " noticeably less") + " than others doing the same job (" + p.role + ").";
-    }
-    if (f.id === "income-volatility") {
-      return "Relies heavily on commission — about " + fmtPct(p.splitPct) + " of pay is variable, so a slow quarter hits take-home hard.";
-    }
-    if (f.id === "performance") {
-      var kpi = computeKpiSim(p);
-      return "Falling short on " + kpi.metric + ", the main day-to-day measure for this role (estimated — real performance data isn't wired in yet, see note below).";
-    }
-    return f.detail;
-  }
-  // ---- Escalation workflow: Flagged -> department manager -> senior manager -> executive review ----
-  // Modeled on the escalation path discussed for real HR intervention: an issue that keeps recurring
-  // over successive quarters moves up a level, until executives decide to continue supporting the
-  // person or end the intervention. "Quarters flagged" isn't in the dataset (no real quarterly history
-  // per person was supplied), so it's a deterministic simulation like the KPI score above — used only
-  // to suggest a starting stage, never hidden from the case view.
-  var ESCALATION_STAGES = [
-    { id: "flagged", label: "Flagged", badgeKind: "warning" },
-    { id: "dept_manager", label: "With department manager", badgeKind: "warning" },
-    { id: "senior_manager", label: "With senior manager", badgeKind: "critical" },
-    { id: "exec_review", label: "Executive review", badgeKind: "critical" },
-    { id: "closed", label: "Closed", badgeKind: "good" }
-  ];
-  function stageMeta(id) {
-    return ESCALATION_STAGES.filter(function (s) { return s.id === id; })[0] || ESCALATION_STAGES[0];
-  }
-  function nextStage(id) {
-    var idx = ESCALATION_STAGES.findIndex(function (s) { return s.id === id; });
-    return ESCALATION_STAGES[Math.min(idx + 1, ESCALATION_STAGES.length - 2)]; // never auto-advance into "closed"
-  }
-  function quartersFlagged(p) {
-    return Math.round(seededRange(p.name + "|quartersFlagged", 1, 4.49));
-  }
-  function suggestedStage(qf) {
-    if (qf >= 4) return "exec_review";
-    if (qf === 3) return "senior_manager";
-    if (qf === 2) return "dept_manager";
-    return "flagged";
-  }
-  // All the recommendations that apply to this person, in priority order — the point is to say what
-  // to do next, not just to label the person. Financial vs. non-financial KPI shortfalls are called
-  // out by name so whoever picks up the case knows exactly which measure to address.
-  function hrRecommendations(p, flags) {
-    var recs = [];
-    var kpi = computeKpiSim(p);
-    var hasPerf = flags.some(function (f) { return f.id === "performance"; });
-    if (hasPerf) {
-      recs.push("Non-financial measure short of target: " + kpi.metric + " at " + kpi.opsActual + "% vs. a " + kpi.opsTarget + "% target (estimated) — recommend targeted coaching on this specific measure, with a check-in next quarter.");
-      if (kpi.finPct < 0.85) {
-        recs.push("Financial component is also soft (" + fmtPct(kpi.finPct) + " of target, estimated) — worth checking whether this is capacity/allocation-related rather than effort-related before escalating further.");
-      }
-    }
-    if (flags.some(function (f) { return f.id === "pay-equity"; })) {
-      recs.push("Pay sits below the role median — review base pay independently of the performance discussion; being underpaid can itself depress engagement and isn't something coaching fixes.");
-    }
-    if (flags.some(function (f) { return f.id === "income-volatility"; })) {
-      recs.push("Take-home is heavily commission-dependent — if a performance dip lines up with a slow sales quarter, consider whether the issue is income volatility rather than capability.");
-    }
-    var qf = quartersFlagged(p);
-    if (qf >= 3) {
-      recs.push("This has now shown up for " + qf + " consecutive quarters (estimated) — per the escalation policy, this is ready for senior manager / executive review rather than another quarter at the department level.");
-    }
-    if (!recs.length) recs.push("No specific concern beyond the flag itself — recommend a light-touch check-in.");
-    return recs;
-  }
-
-  // ---- Simulated KPI achievement (Methodology, section 3 formulas scored) ----
-  // No real operational actuals (order logs, SLA timers, survey ratings, timesheets) were supplied
-  // with the dataset — see section 3's own note. To make the "KPI Achievement" badges mean something
-  // instead of staying purely descriptive, this generates a deterministic, clearly-labeled SIMULATION
-  // per person: a mock financial-attainment score and a mock score against their department's real
-  // non-financial formula, blended using the illustrative weights from section 2. It is simulated data
-  // shown against a real name — every place it renders says "(simulated)" for that reason.
-  var deptKpiMeta = {
-    "Sales":               { metric: "Customer Retention",        financialShare: 0.90 },
-    "Product Management":  { metric: "Deal Support Win Rate",      financialShare: 0.35 },
-    "Consulting":          { metric: "Utilisation Rate",           financialShare: 0.00 },
-    "Sales Support":       { metric: "Order Accuracy",             financialShare: 0.00 },
-    "Delivery":            { metric: "On-time Delivery",           financialShare: 0.30 }
-  };
-  function computeKpiSim(p) {
-    var meta = deptKpiMeta[p.dept] || { metric: "Operational measure", financialShare: 0.5 };
-    var finPct = seededRange(p.name + "|fin", 0.62, 1.22);
-    var opsPct = seededRange(p.name + "|ops", 0.68, 1.15);
-    var opsTarget = Math.round(seededRange(p.name + "|target", 70, 90));
-    var opsActual = Math.round(opsTarget * opsPct);
-    var blended = meta.financialShare * finPct + (1 - meta.financialShare) * opsPct;
-    return { pct: blended, finPct: finPct, opsPct: opsPct, metric: meta.metric, opsActual: opsActual, opsTarget: opsTarget, financialShare: meta.financialShare };
-  }
-  function kpiSimBadge(pct) {
-    var kind = pct < 0.70 ? "critical" : pct < 0.90 ? "warning" : "good";
-    return badge(kind, fmtPct(pct) + " (sim.)");
-  }
-
-  var projects = [
-    { name: "Project Atlas", type: "ERP Implementation", status: "Active", revenue: 1200000, cost: 780000, ngp: 420000, collected: 1020000, dso: 62,
-      attribution: [["Sales", 40, "var(--series-1)"], ["Consulting", 30, "var(--series-3)"], ["Delivery", 20, "var(--series-5)"], ["Product Management", 10, "var(--series-2)"]], flag: null },
-    { name: "Project Horizon", type: "Cloud Migration", status: "Active", revenue: 2050000, cost: 1350000, ngp: 700000, collected: 1989000, dso: 38,
-      attribution: [["Sales", 35, "var(--series-1)"], ["Delivery", 35, "var(--series-5)"], ["Consulting", 20, "var(--series-3)"], ["Sales Support", 10, "var(--series-4)"]], flag: null },
-    { name: "Project Beacon", type: "Managed Services Renewal", status: "Complete", revenue: 860000, cost: 520000, ngp: 340000, collected: 860000, dso: 21,
-      attribution: [["Sales", 55, "var(--series-1)"], ["Sales Support", 25, "var(--series-4)"], ["Product Management", 20, "var(--series-2)"]], flag: null },
-    { name: "Project Falcon", type: "New Logo — Complex Solution", status: "Active", revenue: 1680000, cost: 1220000, ngp: 460000, collected: 1193000, dso: 96,
-      attribution: [["Sales", 30, "var(--series-1)"], ["Consulting", 35, "var(--series-3)"], ["Product Management", 15, "var(--series-2)"], ["Delivery", 20, "var(--series-5)"]], flag: "NGP margin 27.4% vs. 35% target; collections at 71%, DSO 96 days" }
-  ];
-
-  // Aggregate-only flags for the company-level review list — no named individual appears here.
-  // Named cases (real people, real comp figures) live only in the HR Intervention tab, same as
-  // the Individuals tab already shows full names for real comp data.
-  var exceptionFlags = [
-    { who: "Pay equity — company-wide", why: "10 of 64 employees sit more than 10% below their own role's median base salary", action: "Recommended action: open HR Intervention tab for the named list and case tracker", kind: "warning" },
-    { who: "Income volatility — commission staff", why: "10 of 24 commission-paid employees have over 35% of OTE in variable pay", action: "Recommended action: open HR Intervention tab for the named list and case tracker", kind: "warning" },
-    { who: "Project Falcon", why: "NGP margin 27.4% vs. 35% target, collections at 71% (DSO 96 days)", action: "Recommended action: review pricing / scope and escalate collections", kind: "critical" }
-  ];
+  function companyHeadcountBreakdown() { return headcountInfo; }
+  function scoreBadge(pct) { return badge(GC.kind(pct), pct.toFixed(0) + "%"); }
+  var esc = GC.esc;
 
   /* ---------------- state ---------------- */
   var state = {
@@ -1143,7 +469,6 @@
     indivSearch: "", indivSort: { key: "name", dir: 1 }, indivPage: 1, indivPageSize: 15,
     selectedEmployee: null, hrViewMode: "simple"
   };
-  var hrCaseState = {}; // name -> { stage, finalDecision, owner, notes }, in-memory only for this session
 
   // text is recomputed live (see textOnFill) whenever it's actually used against the current theme —
   // these are just the fills; a stale hardcoded text color was failing contrast in several cases.
@@ -1605,31 +930,28 @@
   }
 
   /* ---------------- render: departments view ---------------- */
-  function deptKpiAverage(deptName) {
-    var members = individuals.filter(function (p) { return p.dept === deptName; });
-    if (!members.length) return null;
-    var sum = 0;
-    members.forEach(function (p) { sum += computeKpiSim(p).pct; });
-    return sum / members.length;
-  }
   function renderDepartmentsView() {
-    renderDeptChart(document.getElementById("deptChartHost"), document.getElementById("deptLegend"), document.getElementById("deptTable"));
+    var hasCost = departments.length && departments.every(function (d) { return d.cost != null; });
+    document.getElementById("deptChartCard").hidden = !hasCost;
+    if (hasCost) renderDeptChart(document.getElementById("deptChartHost"), document.getElementById("deptLegend"), document.getElementById("deptTable"));
     var table = document.getElementById("deptScoreTable");
     var rows = departments.map(function (d) {
-      var ratio = d.ngp / d.cost;
-      var kind = ratio < 1.0 ? "critical" : ratio < 1.5 ? "warning" : "good";
-      var kpiAvg = deptKpiAverage(d.name);
-      return "<tr><td>" + d.name + '</td><td class="num">' + d.headcount + '</td><td class="num">' + fmtMoney(d.ngp) + '</td><td class="num">' + fmtMoney(d.cost) +
-        '</td><td>' + meter(Math.min(ratio / 3, 1), kind) + '</td><td>' + coverageBadge(ratio) + "</td><td>" + (kpiAvg == null ? "—" : kpiSimBadge(kpiAvg)) + "</td></tr>";
+      var costCells = '<td class="num">—</td><td class="num">—</td><td>—</td><td>—</td>';
+      if (d.cost != null) {
+        var ratio = d.ngp / d.cost;
+        var kind = ratio < 1.0 ? "critical" : ratio < 1.5 ? "warning" : "good";
+        costCells = '<td class="num">' + fmtMoney(d.ngp) + '</td><td class="num">' + fmtMoney(d.cost) + "</td><td>" + meter(Math.min(ratio / 3, 1), kind) + "</td><td>" + coverageBadge(ratio) + "</td>";
+      }
+      return "<tr><td>" + esc(d.name) + '</td><td class="num">' + d.headcount + "</td>" + costCells + "<td>" + scoreBadge(d.avg_kpi) + "</td></tr>";
     }).join("");
-    table.innerHTML = '<thead><tr><th>Department</th><th class="num">Headcount</th><th class="num">Attributed NGP</th><th class="num">Employment cost</th><th>Coverage</th><th>Status</th><th>Avg. KPI achievement</th></tr></thead><tbody>' + rows + "</tbody>" +
-      '<caption>Coverage meter is scaled to a 3.0x ceiling for readability; ratio and status badge show the actual value. KPI achievement is simulated (no real operational actuals supplied) — see Methodology, section 3.</caption>';
+    table.innerHTML = '<thead><tr><th>Department</th><th class="num">Headcount</th><th class="num">Attributed NGP (annual)</th><th class="num">Employment cost (annual)</th><th>Coverage</th><th>Status</th><th>Avg. KPI score</th></tr></thead><tbody>' + rows + "</tbody>" +
+      "<caption>Employment cost is now built bottom-up from each person's salary, variable pay, approved expense claims and other employment costs (see ROI & Cost). Coverage meter is scaled to a 3.0x ceiling. Avg. KPI score uses each person's current weightage.</caption>";
   }
 
-  /* ---------------- render: individuals view ---------------- */
+  /* ---------------- render: individuals view (Director only: compensation records) ---------------- */
   function hrFlagPillsHtml(flags) {
     return flags.length
-      ? flags.map(function (f) { return '<span class="hr-flag-pill ' + f.id + '" title="' + f.detail.replace(/"/g, "&quot;") + '">' + f.label + "</span>"; }).join("")
+      ? flags.map(function (f) { return '<span class="hr-flag-pill ' + f.id + '" title="' + esc(f.detail) + '">' + esc(f.label) + "</span>"; }).join("")
       : '<span style="color:var(--text-muted);">—</span>';
   }
   var indivColumns = [
@@ -1640,8 +962,9 @@
     { key: "variable", label: "Bonus/commission", num: true, sort: function (p) { return p.variable; } },
     { key: "ote", label: "OTE", num: true, sort: function (p) { return p.ote; } },
     { key: "splitPct", label: "Variable %", sort: function (p) { return p.splitPct; } },
-    { key: "kpi", label: "KPI achievement (sim.)", sort: function (p) { return computeKpiSim(p).pct; } },
-    { key: "flags", label: "HR flags", sort: null }
+    { key: "kpi", label: "KPI score", sort: function (p) { return p.kpi; } },
+    { key: "roi", label: "ROI (qtr)", num: true, sort: function (p) { return p.roi_pct; } },
+    { key: "flags", label: "Flags", sort: null }
   ];
   function renderIndividualsView() {
     var table = document.getElementById("indivTable");
@@ -1651,41 +974,29 @@
       var matchesSearch = !q || p.name.toLowerCase().indexOf(q) !== -1 || p.role.toLowerCase().indexOf(q) !== -1;
       return matchesFilter && matchesSearch;
     });
-
     var sortCol = indivColumns.filter(function (c) { return c.key === state.indivSort.key; })[0];
     if (sortCol && sortCol.sort) {
       list = list.slice().sort(function (a, b) {
         var av = sortCol.sort(a), bv = sortCol.sort(b);
-        if (av < bv) return -1 * state.indivSort.dir;
-        if (av > bv) return 1 * state.indivSort.dir;
-        return 0;
+        return av < bv ? -state.indivSort.dir : av > bv ? state.indivSort.dir : 0;
       });
     }
-
-    var totalRows = list.length;
-    var pageSize = state.indivPageSize;
+    var totalRows = list.length, pageSize = state.indivPageSize;
     var pageCount = Math.max(1, Math.ceil(totalRows / pageSize));
     if (state.indivPage > pageCount) state.indivPage = pageCount;
     var startIdx = (state.indivPage - 1) * pageSize;
     var pageList = list.slice(startIdx, startIdx + pageSize);
-
     var headHtml = "<tr>" + indivColumns.map(function (c) {
-      var active = state.indivSort.key === c.key;
-      var arrow = active ? (state.indivSort.dir === 1 ? " ▲" : " ▼") : "";
-      var cls = c.num ? ' class="num"' : "";
-      return "<th" + cls + (c.sort ? ' style="cursor:pointer;user-select:none;" data-sort-key="' + c.key + '"' : "") + ">" + c.label + arrow + "</th>";
+      var arrow = state.indivSort.key === c.key ? (state.indivSort.dir === 1 ? " ▲" : " ▼") : "";
+      return "<th" + (c.num ? ' class="num"' : "") + (c.sort ? ' style="cursor:pointer;user-select:none;" data-sort-key="' + c.key + '"' : "") + ">" + c.label + arrow + "</th>";
     }).join("") + "</tr>";
-
     var rows = pageList.map(function (p) {
-      var flags = computeHrFlags(p);
-      var kpi = computeKpiSim(p);
-      return "<tr><td><b>" + p.name + '</b><div class="proj-meta">' + p.role + "</div></td><td>" + p.dept + '</td><td><span class="pay-pill">' + p.pay + "</span></td>" +
+      return '<tr><td><button type="button" class="table-toggle" data-open-card="' + esc(p.id) + '" style="font-weight:650;color:var(--text-primary);">' + esc(p.name) + '</button><div class="proj-meta">' + esc(p.role) + "</div></td><td>" + esc(p.dept) +
+        '</td><td><span class="pay-pill">' + esc(p.pay) + "</span></td>" +
         '<td class="num">' + fmtMoney(p.base) + '</td><td class="num">' + fmtMoney(p.variable) + '</td><td class="num">' + fmtMoney(p.ote) + "</td>" +
-        "<td>" + fmtPct(p.splitPct, 1) + "</td><td>" + kpiSimBadge(kpi.pct) + "</td><td>" + hrFlagPillsHtml(flags) + "</td></tr>";
+        "<td>" + fmtPct(p.splitPct, 1) + "</td><td>" + scoreBadge(p.kpi) + '</td><td class="num">' + p.roi_pct.toFixed(0) + "%</td><td>" + hrFlagPillsHtml(p.flags) + "</td></tr>";
     }).join("");
-    table.innerHTML = "<thead>" + headHtml + "</thead><tbody>" +
-      (rows || '<tr><td colspan="9" style="color:var(--text-muted);padding:16px 10px;">No employees match this filter.</td></tr>') + "</tbody>";
-
+    table.innerHTML = "<thead>" + headHtml + "</thead><tbody>" + (rows || '<tr><td colspan="10" style="color:var(--text-muted);padding:16px 10px;">No employees match this filter.</td></tr>') + "</tbody>";
     table.querySelectorAll("th[data-sort-key]").forEach(function (th) {
       th.addEventListener("click", function () {
         var key = th.dataset.sortKey;
@@ -1693,304 +1004,478 @@
         renderIndividualsView();
       });
     });
-
+    wireOpenCard(table);
     var pagHost = document.getElementById("indivPagination");
     if (totalRows === 0) { pagHost.innerHTML = ""; return; }
-    var fromN = startIdx + 1, toN = Math.min(startIdx + pageSize, totalRows);
-    pagHost.innerHTML =
-      "<span>Showing " + fromN + "–" + toN + " of " + totalRows + "</span>" +
-      '<span style="display:flex;gap:6px;">' +
-      '<button type="button" class="chip" id="indivPrev"' + (state.indivPage <= 1 ? " disabled" : "") + ">Prev</button>" +
-      '<span style="padding:5px 4px;">Page ' + state.indivPage + " of " + pageCount + "</span>" +
-      '<button type="button" class="chip" id="indivNext"' + (state.indivPage >= pageCount ? " disabled" : "") + ">Next</button>" +
-      "</span>";
-    var prevBtn = document.getElementById("indivPrev"), nextBtn = document.getElementById("indivNext");
-    if (prevBtn) prevBtn.addEventListener("click", function () { if (state.indivPage > 1) { state.indivPage--; renderIndividualsView(); } });
-    if (nextBtn) nextBtn.addEventListener("click", function () { if (state.indivPage < pageCount) { state.indivPage++; renderIndividualsView(); } });
+    pagHost.innerHTML = "<span>Showing " + (startIdx + 1) + "–" + Math.min(startIdx + pageSize, totalRows) + " of " + totalRows + "</span>" +
+      '<span style="display:flex;gap:6px;"><button type="button" class="chip" id="indivPrev"' + (state.indivPage <= 1 ? " disabled" : "") + ">Prev</button>" +
+      '<span style="padding:5px 4px;">Page ' + state.indivPage + " of " + pageCount + '</span><button type="button" class="chip" id="indivNext"' + (state.indivPage >= pageCount ? " disabled" : "") + ">Next</button></span>";
+    document.getElementById("indivPrev").addEventListener("click", function () { if (state.indivPage > 1) { state.indivPage--; renderIndividualsView(); } });
+    document.getElementById("indivNext").addEventListener("click", function () { if (state.indivPage < pageCount) { state.indivPage++; renderIndividualsView(); } });
+  }
+
+  /* ---------------- shared: open someone's scorecard in a modal ---------------- */
+  function openScorecard(id) {
+    GC.api("/api/scorecard?id=" + encodeURIComponent(id)).then(function (card) {
+      var body = GC.openModal(card.employee.name + " — performance scorecard", card.employee.title + " · " + card.employee.dept + " · " + card.period,
+        GC.scoreTiles(card) + GC.weightCard(card, { title: "Weightage" }) + '<div style="height:14px"></div>' + GC.kpiTable(card) +
+        (card.assessment ? '<div class="notice" style="margin-top:14px;"><b>Flagged for HR intervention.</b> See the HR Intervention tab for the gap analysis and case.</div>' : ""));
+      GC.wireExplain(body, card);
+    }).catch(function (e) { GC.toast(e.message); });
+  }
+  function wireOpenCard(host) {
+    host.querySelectorAll("[data-open-card]").forEach(function (b) { b.addEventListener("click", function () { openScorecard(b.dataset.openCard); }); });
+  }
+  function showError(hostId, e) { var h = document.getElementById(hostId); if (h) h.innerHTML = '<p class="err">' + esc(e.message) + "</p>"; }
+
+  /* ---------------- render: performance view (team / department scorecards) ---------------- */
+  var teamData = null;
+  function loadPerformance() {
+    return GC.api("/api/team").then(function (d) { teamData = d; renderPerformanceView(); });
+  }
+  function themesHtml(t) {
+    if (!t) return "";
+    if (t.suppressed) return '<p class="card-sub" style="margin:0;">Hidden: only ' + t.respondents + " survey respondents — results are shown for groups of " + t.min_group + " or more so no individual can be identified.</p>";
+    var a = t.averages;
+    function row(k, label, inv) { var v = a[k]; var kind = inv ? (v >= 3.8 ? "critical" : v >= 3.3 ? "warning" : "good") : (v < 3 ? "critical" : v < 3.5 ? "warning" : "good"); return "<tr><td>" + label + '</td><td class="num">' + v.toFixed(2) + " / 5</td><td>" + badge(kind, inv ? (kind === "good" ? "OK" : "High") : (kind === "good" ? "Healthy" : "Watch")) + "</td></tr>"; }
+    return '<table class="data-table"><tbody>' + row("engagement", "Engagement") + row("manager_support", "Manager support") + row("workload", "Workload pressure (higher = worse)", true) +
+      row("career_growth", "Career growth") + row("belonging", "Belonging") + "</tbody><caption>Latest pulse wave, " + t.respondents + " respondents · " + t.high_workload_share + "% report high workload · aggregated only (n ≥ 5)</caption></table>";
+  }
+  function renderPerformanceView() {
+    var d = teamData;
+    var host = document.getElementById("perfContent");
+    var people = d.people;
+    var below = people.filter(function (p) { return p.overall < 70; }).length;
+    var avg = people.length ? people.reduce(function (s, p) { return s + p.overall; }, 0) / people.length : 0;
+    var deptRows = d.departments.map(function (x) {
+      return "<tr><td>" + esc(x.dept) + '</td><td class="num">' + x.headcount + "</td><td>" + GC.meter(x.avg_overall) + '</td><td class="num">' + x.avg_financial_pct.toFixed(0) + '%</td><td class="num">' + x.avg_non_financial_pct.toFixed(0) + '%</td><td class="num">' + x.below_70 + "</td></tr>";
+    }).join("");
+    var rows = people.map(function (p) {
+      var bg = p.biggest_gap ? esc(p.biggest_gap.name) + ' <span class="muted">(−' + p.biggest_gap.points_lost.toFixed(1) + " pts)</span>" : '<span class="muted">—</span>';
+      return '<tr><td><b>' + esc(p.employee.name) + '</b><div class="proj-meta">' + esc(p.employee.title) + " · " + esc(p.employee.dept) + "</div></td>" +
+        "<td>" + GC.meter(p.overall) + "</td>" +
+        '<td class="num">' + p.financial.points.toFixed(0) + ' <span class="muted">/ ' + p.financial.weight + "</span></td>" +
+        '<td class="num">' + p.non_financial.points.toFixed(0) + ' <span class="muted">/ ' + p.non_financial.weight + "</span></td>" +
+        "<td>" + bg + "</td><td>" + GC.spark(p.trend, 90, 24) + "</td>" +
+        '<td>' + (p.weightage.individual ? '<span class="src-tag">individual</span>' : '<span class="src-tag">template</span>') + "</td>" +
+        '<td><button type="button" class="chip" data-open-card="' + esc(p.employee.id) + '">Scorecard →</button></td></tr>';
+    }).join("");
+    host.innerHTML =
+      '<div class="grid cols-4" style="margin-bottom:14px;">' +
+        '<div class="card stat-tile"><p class="label">People in your scope</p><p class="value">' + people.length + "</p></div>" +
+        '<div class="card stat-tile"><p class="label">Average overall score</p><p class="value">' + avg.toFixed(0) + "%</p></div>" +
+        '<div class="card stat-tile"><p class="label">Below 70%</p><p class="value">' + below + "</p></div>" +
+        '<div class="card stat-tile"><p class="label">Period</p><p class="value" style="font-size:20px;">' + esc(SESSION.period) + "</p></div>" +
+      "</div>" +
+      '<div class="grid cols-2" style="margin-bottom:14px;">' +
+        '<div class="card"><h3>By department</h3><p class="card-sub">Average scores using each person\'s current weightage</p><div class="tscroll"><table class="data-table"><thead><tr><th>Department</th><th class="num">People</th><th>Avg. overall</th><th class="num">Financial</th><th class="num">Non-fin.</th><th class="num">&lt;70%</th></tr></thead><tbody>' + deptRows + "</tbody></table></div></div>" +
+        '<div class="card"><h3>Team engagement themes</h3><p class="card-sub">From the synthetic HR pulse survey — aggregated, never per person at this level</p>' + themesHtml(d.survey_themes) + "</div>" +
+      "</div>" +
+      '<div class="card"><h3>Individual scorecards</h3><p class="card-sub">Sorted lowest score first. Open a scorecard for the full KPI breakdown, targets, gaps and the calculation. No pay data is shown here.</p>' +
+      '<div class="tscroll"><table class="data-table"><thead><tr><th>Employee</th><th>Overall</th><th class="num">Financial pts</th><th class="num">Non-fin. pts</th><th>Biggest gap</th><th>4-qtr trend</th><th>Weightage</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
+    wireOpenCard(host);
+  }
+
+  /* ---------------- render: ROI & cost view ---------------- */
+  function loadRoi() { return GC.api("/api/roi").then(renderRoiView); }
+  function costBar(r) {
+    var parts = [["Salary", r.salary_cost, "var(--series-1)"], ["Variable pay", r.variable_cost, "var(--series-2)"], ["Expenses", r.expense_cost, "var(--series-4)"], ["Other employment cost", r.other_cost, "var(--series-5)"]];
+    var tot = r.total_cost || 1;
+    return '<div class="wbar">' + parts.map(function (p) { var w = p[1] / tot * 100; return '<div style="width:' + w + "%;background:" + p[2] + ';color:' + textOnFill(p[2]) + '" title="' + p[0] + ": " + fmtMoney(p[1]) + '">' + (w > 12 ? p[0] : "") + "</div>"; }).join("") + "</div>" +
+      '<div class="wlegend">' + parts.map(function (p) { return '<span><i style="background:' + p[2] + '"></i>' + p[0] + " " + fmtMoney(p[1]) + "</span>"; }).join("") + "</div>";
+  }
+  function roiRow(r, label) {
+    return "<tr><td>" + label + '</td><td class="num">' + r.headcount + '</td><td class="num"><b>' + fmtMoney(r.return) + '</b></td><td class="num">' + fmtMoney(r.salary_cost) + '</td><td class="num">' + fmtMoney(r.variable_cost) +
+      '</td><td class="num">' + fmtMoney(r.expense_cost) + '</td><td class="num">' + fmtMoney(r.other_cost) + '</td><td class="num"><b>' + fmtMoney(r.total_cost) + '</b></td><td class="num">' + badge(r.roi_pct < 50 ? "critical" : r.roi_pct < 100 ? "warning" : "good", r.roi_pct.toFixed(0) + "%") + '</td><td class="num">' + r.coverage.toFixed(2) + "x</td></tr>";
+  }
+  var ROI_HEAD = '<thead><tr><th></th><th class="num">People</th><th class="num">Return (NGP)</th><th class="num">Salary</th><th class="num">Variable</th><th class="num">Expenses</th><th class="num">Other</th><th class="num">Total cost</th><th class="num">ROI</th><th class="num">Coverage</th></tr></thead>';
+  function renderRoiView(d) {
+    var t = d.total;
+    var host = document.getElementById("roiContent");
+    var cats = Object.keys(t.expenses_by_category);
+    var maxCat = Math.max.apply(null, cats.map(function (c) { return t.expenses_by_category[c]; }).concat([1]));
+    host.innerHTML =
+      '<div class="grid cols-4" style="margin-bottom:14px;">' +
+        '<div class="card stat-tile"><p class="label">Return — attributed NGP (' + esc(d.period) + ')</p><p class="value">' + fmtMoney(t.return) + "</p></div>" +
+        '<div class="card stat-tile"><p class="label">Total cost base</p><p class="value">' + fmtMoney(t.total_cost) + '</p><p class="delta flat">salary + variable + expenses + other</p></div>' +
+        '<div class="card stat-tile"><p class="label">ROI</p><p class="value">' + t.roi_pct.toFixed(0) + '%</p><p class="delta flat">(Return − Total cost) ÷ Total cost</p></div>' +
+        '<div class="card stat-tile"><p class="label">Cost coverage</p><p class="value">' + t.coverage.toFixed(2) + 'x</p><p class="delta flat">Return ÷ Total cost</p></div>' +
+      "</div>" +
+      '<div class="grid cols-2" style="margin-bottom:14px;">' +
+        '<div class="card"><h3>What the cost base is made of</h3><p class="card-sub">' + t.headcount + " people · current quarter · pending claims (" + fmtMoney(t.expenses_pending) + ") excluded until approved</p>" + costBar(t) + "</div>" +
+        '<div class="card"><h3>Expense claims by category</h3><p class="card-sub">Approved claims, aggregated</p>' + cats.map(function (c) {
+          return '<div class="kpi-wrow"><span>' + c + '</span><div class="track"><div style="width:' + (t.expenses_by_category[c] / maxCat * 100).toFixed(0) + '%;background:var(--series-4)"></div></div><span class="pts">' + fmtMoney(t.expenses_by_category[c]) + "</span></div>";
+        }).join("") + "</div>" +
+      "</div>" +
+      '<div class="card" style="margin-bottom:14px;"><h3>By department</h3><p class="card-sub">Aggregates are shown only for groups of ' + d.min_group + "+ people</p>" +
+        '<div class="tscroll"><table class="data-table">' + ROI_HEAD + "<tbody>" + d.departments.map(function (r) { return roiRow(r, esc(r.name)); }).join("") + "</tbody></table></div></div>" +
+      (d.teams.length ? '<div class="card" style="margin-bottom:14px;"><h3>By team</h3><p class="card-sub">Manager-led teams with ' + d.min_group + '+ direct reports</p><div class="tscroll"><table class="data-table">' + ROI_HEAD + "<tbody>" +
+        d.teams.map(function (r) { return roiRow(r, esc(r.name) + '<div class="proj-meta">' + esc(r.dept) + "</div>"); }).join("") + "</tbody></table></div></div>" : "") +
+      (d.individuals
+        ? '<div class="card"><h3>Individual cost base &amp; ROI <span class="level-pill">Director only</span></h3><p class="card-sub">Each person\'s own cost structure — commission vs. bonus, department expense profile, statutory rate. Open claims for the line items.</p>' +
+          '<div class="tscroll"><table class="data-table"><thead><tr><th>Employee</th><th>Pay</th><th class="num">Return</th><th class="num">Salary</th><th class="num">Variable</th><th class="num">Expenses</th><th class="num">Other</th><th class="num">Total</th><th class="num">ROI</th><th></th></tr></thead><tbody>' +
+          d.individuals.slice().sort(function (a, b) { return a.roi_pct - b.roi_pct; }).map(function (r) {
+            return "<tr><td><b>" + esc(r.name) + '</b><div class="proj-meta">' + esc(r.title) + " · " + esc(r.dept) + '</div></td><td><span class="pay-pill">' + esc(r.pay_structure) + '</span></td><td class="num">' + fmtMoney(r.return) +
+              '</td><td class="num">' + fmtMoney(r.salary_cost) + '</td><td class="num" title="' + esc(r.variable_basis) + '">' + fmtMoney(r.variable_cost) + '</td><td class="num">' + fmtMoney(r.expense_cost) + '</td><td class="num">' + fmtMoney(r.other_cost) +
+              '</td><td class="num"><b>' + fmtMoney(r.total_cost) + '</b></td><td class="num">' + r.roi_pct.toFixed(0) + '%</td><td><button type="button" class="chip" data-claims="' + esc(r.id) + '">Claims →</button></td></tr>';
+          }).join("") + "</tbody></table></div></div>"
+        : '<div class="notice lock"><b>Individual salary and expense figures are restricted to the Director.</b> As a senior manager you see the same ROI calculation aggregated to departments and teams of ' + d.min_group + "+ people, so no individual's pay can be inferred.</div>");
+    host.querySelectorAll("[data-claims]").forEach(function (b) { b.addEventListener("click", function () { openClaims(b.dataset.claims); }); });
+  }
+  function openClaims(id) {
+    GC.api("/api/expenses?id=" + encodeURIComponent(id)).then(function (d) {
+      var r = d.roi;
+      GC.openModal(d.employee.name + " — cost base & expense claims", d.employee.title + " · current quarter · this view is audit-logged",
+        '<div class="formula">Return ' + fmtMoney(r.return) + " − Total cost " + fmtMoney(r.total_cost) + " = " + fmtMoney(r.return - r.total_cost) + " → ROI " + r.roi_pct.toFixed(1) + "%</div>" +
+        '<p class="card-sub">Return basis: ' + esc(r.return_basis) + "</p>" +
+        '<table class="data-table"><tbody>' +
+          "<tr><td>Salary cost</td><td>Base salary ÷ 4</td><td class=\"num\">" + fmtMoney(r.salary_cost) + "</td></tr>" +
+          "<tr><td>Variable pay</td><td>" + esc(r.variable_basis) + '</td><td class="num">' + fmtMoney(r.variable_cost) + "</td></tr>" +
+          Object.keys(r.expenses_by_category).map(function (c) { return "<tr><td>Expense: " + c + '</td><td>Approved claims</td><td class="num">' + fmtMoney(r.expenses_by_category[c]) + "</td></tr>"; }).join("") +
+          Object.keys(r.other_breakdown).map(function (k) { return "<tr><td>Other: " + k.replace(/_/g, " ") + '</td><td>Annual ÷ 4</td><td class="num">' + fmtMoney(r.other_breakdown[k]) + "</td></tr>"; }).join("") +
+          '<tr><td><b>Total cost</b></td><td></td><td class="num"><b>' + fmtMoney(r.total_cost) + "</b></td></tr></tbody></table>" +
+        '<h3 style="font-size:13px;margin:16px 0 6px;">Claim line items</h3><div class="tscroll"><table class="data-table"><thead><tr><th>ID</th><th>Date</th><th>Category</th><th>Status</th><th class="num">Amount</th></tr></thead><tbody>' +
+        d.claims.map(function (c) { return "<tr><td>" + esc(c.id) + "</td><td>" + esc(c.date) + "</td><td>" + esc(c.category) + "</td><td>" + badge(c.status === "approved" ? "good" : "warning", c.status) + '</td><td class="num">' + fmtMoney(c.amount) + "</td></tr>"; }).join("") +
+        "</tbody></table></div>");
+    }).catch(function (e) { GC.toast(e.message); });
+  }
+
+  /* ---------------- render: KPI weightage view ---------------- */
+  var weightsData = null, wEdit = null;
+  function loadWeights() { return GC.api("/api/weights").then(function (d) { weightsData = d; renderWeightsView(); }); }
+  function miniSplit(fin) { return '<div class="wbar" style="height:14px;margin:0;min-width:120px;"><div class="fin" style="width:' + fin + '%"></div><div class="nonfin" style="width:' + (100 - fin) + '%"></div></div><div class="proj-meta">' + fin + "% / " + (100 - fin) + "%</div>"; }
+  function renderWeightsView() {
+    var d = weightsData;
+    var host = document.getElementById("weightsContent");
+    var roleRows = d.roles.map(function (r) {
+      return "<tr><td><b>" + esc(r.title) + '</b><div class="proj-meta">' + esc(r.dept) + '</div></td><td class="num">' + r.headcount + "</td><td>" + miniSplit(r.template.financial_weight) + "</td>" +
+        '<td><button type="button" class="chip" data-edit-role="' + esc(r.role_key) + '">' + (r.editable ? "Edit template" : "View") + "</button></td></tr>";
+    }).join("");
+    var peopleRows = d.people.map(function (p) {
+      return "<tr><td><b>" + esc(p.name) + '</b><div class="proj-meta">' + esc(p.title) + "</div></td><td>" + miniSplit(p.financial_weight) + "</td>" +
+        "<td>" + (p.individual ? '<span class="src-tag">Individual</span><div class="proj-meta">' + esc(p.agreed_by || "") + " " + (p.agreed_at ? p.agreed_at.slice(0, 10) : "") + "</div>" : '<span class="src-tag">Role template</span>') + "</td>" +
+        '<td><button type="button" class="chip" data-edit-person="' + esc(p.id) + '">' + (p.editable ? "Agree split / targets" : "View") + "</button></td></tr>";
+    }).join("");
+    host.innerHTML =
+      '<div class="notice"><b>Who can change weightages?</b> ' + esc(d.rules) + "</div>" +
+      '<div class="grid cols-2" style="margin-bottom:14px;align-items:start;">' +
+        '<div class="card"><h3>Role templates</h3><p class="card-sub">Default financial vs. non-financial split and KPI weights for everyone in a role</p><div class="tscroll"><table class="data-table"><thead><tr><th>Role</th><th class="num">People</th><th>Fin. / non-fin.</th><th></th></tr></thead><tbody>' + roleRows + "</tbody></table></div></div>" +
+        '<div class="card"><h3>Individual agreements</h3><p class="card-sub">Split and targets agreed between a manager and an employee (overrides the template)</p><div class="tscroll"><table class="data-table"><thead><tr><th>Employee</th><th>Fin. / non-fin.</th><th>Source</th><th></th></tr></thead><tbody>' + (peopleRows || '<tr><td colspan="4" class="muted">No one in your scope.</td></tr>') + "</tbody></table></div></div>" +
+      "</div>" +
+      '<div class="card" id="weightEditor"><h3>Editor</h3><p class="card-sub" style="margin:0;">Choose a role template or an individual above.</p></div>';
+    host.querySelectorAll("[data-edit-role]").forEach(function (b) { b.addEventListener("click", function () { startEdit("role", b.dataset.editRole); }); });
+    host.querySelectorAll("[data-edit-person]").forEach(function (b) { b.addEventListener("click", function () { startEdit("employee", b.dataset.editPerson); }); });
+  }
+  function startEdit(mode, key) {
+    var d = weightsData, src, dept, editable, title, tplFin;
+    if (mode === "role") {
+      src = d.roles.filter(function (r) { return r.role_key === key; })[0];
+      dept = src.dept; editable = src.editable; title = "Role template — " + src.title + " (" + src.dept + ")";
+      wEdit = { mode: mode, key: key, dept: dept, editable: editable, title: title, fw: src.template.financial_weight, kw: JSON.parse(JSON.stringify(src.template.kpi_weights)), targets: {} };
+    } else {
+      src = d.people.filter(function (p) { return p.id === key; })[0];
+      dept = src.dept; editable = src.editable; tplFin = src.template_financial;
+      wEdit = { mode: mode, key: key, dept: dept, editable: editable, title: "Individual agreement — " + src.name + " (" + src.title + ")", fw: src.financial_weight,
+        kw: JSON.parse(JSON.stringify(src.kpi_weights)), targets: JSON.parse(JSON.stringify(src.targets || {})), tplFin: tplFin, individual: src.individual };
+    }
+    var lo = 0, hi = 100;
+    if (mode === "employee" && d.manager_band != null) { lo = Math.max(0, tplFin - d.manager_band); hi = Math.min(100, tplFin + d.manager_band); }
+    wEdit.lo = lo; wEdit.hi = hi;
+    renderEditor();
+    document.getElementById("weightEditor").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function bucketSum(b) { var s = 0; Object.keys(wEdit.kw[b]).forEach(function (k) { s += wEdit.kw[b][k] || 0; }); return s; }
+  function renderEditor() {
+    var lib = weightsData.library[wEdit.dept];
+    var ro = !wEdit.editable;
+    function bucketHtml(b, label) {
+      var keys = Object.keys(lib).filter(function (k) { return lib[k].bucket === b; });
+      var bw = b === "financial" ? wEdit.fw : 100 - wEdit.fw;
+      var sum = bucketSum(b);
+      return '<div style="margin-top:12px;"><div class="row"><b style="font-size:13px;">' + label + " KPIs</b>" + '<span class="spacer"></span><span class="' + (bw > 0 && sum !== 100 ? "err" : "muted") + '" style="font-size:12px;">Sum ' + sum + "% " + (bw > 0 && sum !== 100 ? "— must be 100%" : "✓") + "</span></div>" +
+        '<div class="tscroll"><table class="data-table"><thead><tr><th>KPI</th><th class="num">Weight in group</th><th class="num">Overall weight</th>' + (wEdit.mode === "employee" ? '<th class="num">Agreed target</th>' : "") + "</tr></thead><tbody>" +
+        keys.map(function (k) {
+          var w = wEdit.kw[b][k] || 0;
+          var tgtCell = "";
+          if (wEdit.mode === "employee") {
+            tgtCell = '<td class="num">' + (w > 0 ? '<input class="inp" style="width:110px;text-align:right" type="number" step="any" min="0" data-tgt="' + k + '" value="' + (wEdit.targets[k] != null ? wEdit.targets[k] : "") + '" placeholder="role default"' + (ro ? " disabled" : "") + "> " + lib[k].unit : '<span class="muted">—</span>') + "</td>";
+          }
+          return "<tr><td>" + esc(lib[k].name) + '<div class="proj-meta">' + esc(lib[k].formula) + '</div></td><td class="num"><input class="inp" style="width:70px;text-align:right" type="number" min="0" max="100" step="5" data-kw="' + b + "|" + k + '" value="' + w + '"' + (ro ? " disabled" : "") + '> %</td><td class="num">' + (bw * w / 100).toFixed(1) + "%</td>" + tgtCell + "</tr>";
+        }).join("") + "</tbody></table></div></div>";
+    }
+    var host = document.getElementById("weightEditor");
+    host.innerHTML = "<h3>" + esc(wEdit.title) + "</h3>" +
+      (ro ? '<div class="notice lock"><b>View only.</b> Your level cannot change this ' + (wEdit.mode === "role" ? "role template" : "agreement") + ".</div>" : "") +
+      '<p class="card-sub">Financial vs. non-financial split' + (wEdit.mode === "employee" && weightsData.manager_band != null ? " — you may agree " + wEdit.lo + "–" + wEdit.hi + "% financial (role template " + wEdit.tplFin + "% ± " + weightsData.manager_band + ")" : "") + "</p>" +
+      '<div class="row"><input type="range" id="finSlider" min="' + wEdit.lo + '" max="' + wEdit.hi + '" step="5" value="' + wEdit.fw + '" style="flex:1;min-width:180px;"' + (ro ? " disabled" : "") + '><b id="finVal" style="min-width:150px;">Financial ' + wEdit.fw + "% · Non-fin. " + (100 - wEdit.fw) + "%</b></div>" +
+      GC.weightBar(wEdit.fw) +
+      bucketHtml("financial", "Financial") + bucketHtml("non_financial", "Non-financial") +
+      (ro ? "" :
+        '<div class="field" style="margin-top:14px;"><span>' + (wEdit.mode === "employee" ? "What was agreed with the employee (required, audit-logged)" : "Reason for the change (required, audit-logged)") + '</span><textarea id="wReason" placeholder="e.g. Agreed in 1:1 on 2026-10-01: more weight on retention while territory is rebuilt"></textarea></div>' +
+        '<div class="row" style="margin-top:10px;"><button class="btn" type="button" id="wPreview">Preview score impact</button><button class="btn primary" type="button" id="wSave">Save</button>' +
+        (wEdit.mode === "employee" && wEdit.individual ? '<button class="btn danger" type="button" id="wReset">Reset to role template</button>' : "") + '<span class="err" id="wErr"></span></div>') +
+      '<div id="wPreviewOut" style="margin-top:12px;"></div>';
+    var slider = document.getElementById("finSlider");
+    if (slider) slider.addEventListener("input", function () { wEdit.fw = parseInt(slider.value, 10); renderEditor(); });
+    host.querySelectorAll("[data-kw]").forEach(function (inp) {
+      inp.addEventListener("change", function () { var p = inp.dataset.kw.split("|"); var v = parseInt(inp.value, 10); if (isNaN(v) || v < 0) v = 0; if (v === 0) delete wEdit.kw[p[0]][p[1]]; else wEdit.kw[p[0]][p[1]] = Math.min(100, v); renderEditor(); });
+    });
+    host.querySelectorAll("[data-tgt]").forEach(function (inp) {
+      inp.addEventListener("change", function () { var v = parseFloat(inp.value); if (isNaN(v) || v <= 0) delete wEdit.targets[inp.dataset.tgt]; else wEdit.targets[inp.dataset.tgt] = v; });
+    });
+    if (ro) return;
+    function payload() {
+      var kw = { financial: {}, non_financial: {} };
+      ["financial", "non_financial"].forEach(function (b) { Object.keys(wEdit.kw[b]).forEach(function (k) { if (wEdit.kw[b][k] > 0) kw[b][k] = wEdit.kw[b][k]; }); });
+      var body = { financial_weight: wEdit.fw, kpi_weights: kw, reason: (document.getElementById("wReason") || {}).value };
+      if (wEdit.mode === "role") body.role_key = wEdit.key; else { body.employee_id = wEdit.key; body.targets = wEdit.targets; }
+      return body;
+    }
+    var err = document.getElementById("wErr");
+    document.getElementById("wPreview").addEventListener("click", function () {
+      err.textContent = "";
+      GC.api("/api/weights/preview", { body: payload() }).then(function (r) {
+        document.getElementById("wPreviewOut").innerHTML = '<h3 style="font-size:13px;">Recalculated overall score</h3><div class="tscroll"><table class="data-table"><thead><tr><th>Employee</th><th class="num">Now</th><th class="num">With this change</th><th class="num">Change</th><th></th></tr></thead><tbody>' +
+          r.affected.map(function (a) { var dlt = a.after - a.before; return "<tr><td>" + esc(a.name) + '</td><td class="num">' + a.before.toFixed(1) + '%</td><td class="num"><b>' + a.after.toFixed(1) + '%</b></td><td class="num ' + (dlt < 0 ? "gap-neg" : "gap-pos") + '">' + (dlt >= 0 ? "+" : "") + dlt.toFixed(1) + "</td><td>" + (a.keeps_individual_agreement ? '<span class="muted">keeps individual agreement</span>' : "") + "</td></tr>"; }).join("") + "</tbody></table></div>";
+      }).catch(function (e) { err.textContent = e.message; });
+    });
+    document.getElementById("wSave").addEventListener("click", function () {
+      err.textContent = "";
+      GC.api(wEdit.mode === "role" ? "/api/weights/role" : "/api/weights/employee", { body: payload() }).then(function () {
+        GC.toast("Saved — scores recalculated"); invalidate(["performance", "hr", "ai_kpi", "departments"]); return loadWeights();
+      }).catch(function (e) { err.textContent = e.message; });
+    });
+    var reset = document.getElementById("wReset");
+    if (reset) reset.addEventListener("click", function () {
+      GC.api("/api/weights/employee", { body: { employee_id: wEdit.key, reset: true } }).then(function () { GC.toast("Reset to role template"); invalidate(["performance", "hr", "ai_kpi"]); return loadWeights(); })
+        .catch(function (e) { err.textContent = e.message; });
+    });
+  }
+
+  /* ---------------- render: AI-assisted KPI view ---------------- */
+  var aiState = { people: null, selected: null, data: null };
+  function loadAi() {
+    return GC.api("/api/team").then(function (d) {
+      aiState.people = d.people.map(function (p) { return p.employee; }).sort(function (a, b) { return a.name < b.name ? -1 : 1; });
+      if (!aiState.selected && aiState.people.length) aiState.selected = aiState.people[0].id;
+      renderAiShell();
+      return aiState.selected ? loadAiFor(aiState.selected) : null;
+    });
+  }
+  function loadAiFor(id) {
+    aiState.selected = id;
+    return GC.api("/api/ai/suggestions?id=" + encodeURIComponent(id)).then(function (d) { aiState.data = d; renderAiBody(); }).catch(function (e) { showError("aiBody", e); });
+  }
+  function renderAiShell() {
+    var host = document.getElementById("aiContent");
+    host.innerHTML =
+      '<div class="stepper" id="aiStepper"></div>' +
+      '<div class="notice"><b>The AI never assigns KPIs on its own.</b> Suggestions are stored as "pending review" and have no effect on anyone\'s score until a manager accepts and applies them. ' +
+      "Engine: rules-based mock (no external AI API configured) — it only sees KPI history, the role's KPI library and peer medians; never pay, expenses or survey answers.</div>" +
+      '<div class="row" style="margin-bottom:14px;"><label class="field" style="min-width:280px;"><span>Team member</span><select id="aiPerson">' +
+      aiState.people.map(function (p) { return '<option value="' + esc(p.id) + '"' + (p.id === aiState.selected ? " selected" : "") + ">" + esc(p.name) + " — " + esc(p.title) + "</option>"; }).join("") +
+      '</select></label><span class="spacer"></span><button class="btn primary" type="button" id="aiGenerate">Generate suggestions from history</button></div><div id="aiBody"><p class="loading">Loading…</p></div>';
+    document.getElementById("aiPerson").addEventListener("change", function (e) { loadAiFor(e.target.value); });
+    document.getElementById("aiGenerate").addEventListener("click", function () {
+      GC.api("/api/ai/generate", { body: { employee_id: aiState.selected } }).then(function () { return loadAiFor(aiState.selected); }).catch(function (e) { GC.toast(e.message); });
+    });
+  }
+  function renderAiBody() {
+    var d = aiState.data, list = d.suggestions;
+    var pending = list.filter(function (s) { return s.status === "pending_review"; }).length;
+    var accepted = list.filter(function (s) { return s.status === "accepted"; }).length;
+    var applied = list.filter(function (s) { return s.status === "applied"; }).length;
+    var step = !list.length ? 0 : accepted ? 4 : pending ? 2 : applied ? 5 : 2;
+    var steps = ["Historical performance", "AI-generated suggestions", "Manager reviews", "Manager edits target / weight", "Manager approves", "Part of evaluation"];
+    document.getElementById("aiStepper").innerHTML = steps.map(function (s, i) { return '<span class="s' + (i <= step ? " on" : "") + '">' + (i + 1) + ". " + s + "</span>"; }).join('<span class="arrow">→</span>');
+    var sc = d.scorecard;
+    var typeLabel = { new_kpi: "New KPI", retarget: "Re-target", reweight: "Re-weight" };
+    var host = document.getElementById("aiBody");
+    host.innerHTML =
+      '<div class="card" style="margin-bottom:14px;"><div class="row"><div><h3>' + esc(d.employee.name) + '</h3><p class="card-sub" style="margin:0;">' + esc(d.employee.title) + " · current overall " + sc.overall.toFixed(1) + "% · split " + sc.weightage.financial + "/" + (100 - sc.weightage.financial) +
+      '</p></div><span class="spacer"></span>' + GC.spark(sc.trend, 120, 30) + '<button class="btn small" type="button" data-open-card="' + esc(d.employee.id) + '">Scorecard →</button></div></div>' +
+      (list.length ? list.map(function (s) {
+        var lock = s.status === "applied";
+        return '<div class="sugg ' + s.status + '" data-sid="' + esc(s.id) + '"><div class="sugg-head"><div><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;">' + typeLabel[s.type] + " · confidence " + esc(s.confidence) + '</div><div class="t">Suggested KPI: ' + esc(s.name) + ' <span class="bucket-chip ' + s.bucket + '">' + (s.bucket === "financial" ? "Financial" : "Non-financial") + "</span></div></div>" +
+          badge(s.status === "accepted" ? "good" : s.status === "rejected" ? "critical" : s.status === "applied" ? "good" : "warning", s.status.replace("_", " ") + (s.edited ? " · edited" : "")) + "</div>" +
+          '<div class="sugg-grid">' +
+            '<label class="field"><span>Suggested target' + (s.current_target != null ? " (now " + GC.fmt(s.current_target, s.unit) + ")" : "") + '</span><input class="inp" type="number" step="any" data-f="target" value="' + s.suggested_target + '"' + (lock ? " disabled" : "") + "></label>" +
+            '<label class="field"><span>Suggested weight within ' + (s.bucket === "financial" ? "financial" : "non-financial") + " group (%)" + (s.current_weight ? " (now " + s.current_weight + "%)" : "") + '</span><input class="inp" type="number" min="1" max="70" step="1" data-f="weight" value="' + s.suggested_weight + '"' + (lock || s.type === "retarget" ? " disabled" : "") + "></label>" +
+            '<label class="field"><span>Manager note</span><input class="inp" type="text" data-f="note" value="' + esc(s.manager_note || "") + '"' + (lock ? " disabled" : "") + "></label>" +
+          "</div>" +
+          '<div class="reason"><b>Reason:</b> ' + esc(s.reason) + "</div><ul>" + s.evidence.map(function (e) { return "<li>" + esc(e) + "</li>"; }).join("") + "</ul>" +
+          (lock ? '<p class="card-sub" style="margin:8px 0 0;">Applied to the evaluation' + (s.decided_by ? " by " + esc(s.decided_by) : "") + ".</p>" :
+            '<div class="row" style="margin-top:10px;"><button class="btn small primary" type="button" data-act="accept">' + (s.status === "accepted" ? "Update & keep accepted" : "Accept (with edits)") + '</button><button class="btn small" type="button" data-act="reject">Reject</button>' +
+            (s.status !== "pending_review" ? '<button class="btn small" type="button" data-act="reopen">Back to review</button>' : "") + "</div>") +
+          "</div>";
+      }).join("") : '<div class="card"><p class="card-sub" style="margin:0;">No suggestions yet. Click <b>Generate suggestions from history</b> — the engine reviews 4 quarters of KPI history for this person and their peers.</p></div>') +
+      (list.length ? '<div class="card" style="margin-top:6px;"><div class="row"><div><h3>Approve &amp; apply</h3><p class="card-sub" style="margin:0;">' + accepted + " accepted suggestion(s) will be added to " + esc(d.employee.name) + "'s evaluation. Other KPIs in the same group are rebalanced proportionally so each group still sums to 100%.</p></div><span class=\"spacer\"></span>" +
+        '<button class="btn primary" type="button" id="aiApply"' + (accepted ? "" : " disabled") + ">Approve &amp; apply (" + accepted + ")</button></div></div>" : "");
+    wireOpenCard(host);
+    host.querySelectorAll(".sugg[data-sid]").forEach(function (card) {
+      card.querySelectorAll("[data-act]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          var body = { employee_id: aiState.selected, suggestion_id: card.dataset.sid, decision: b.dataset.act, note: card.querySelector('[data-f="note"]').value };
+          if (b.dataset.act === "accept") {
+            body.suggested_target = parseFloat(card.querySelector('[data-f="target"]').value);
+            var wi = card.querySelector('[data-f="weight"]');
+            if (!wi.disabled) body.suggested_weight = parseInt(wi.value, 10);
+          }
+          GC.api("/api/ai/decide", { body: body }).then(function () { return loadAiFor(aiState.selected); }).catch(function (e) { GC.toast(e.message); });
+        });
+      });
+    });
+    var applyBtn = document.getElementById("aiApply");
+    if (applyBtn) applyBtn.addEventListener("click", function () {
+      GC.api("/api/ai/apply", { body: { employee_id: aiState.selected } }).then(function (r) {
+        GC.toast("Applied — overall score " + r.before.toFixed(1) + "% → " + r.after.toFixed(1) + "%");
+        invalidate(["performance", "hr", "weights"]);
+        return loadAiFor(aiState.selected);
+      }).catch(function (e) { GC.toast(e.message); });
+    });
   }
 
   /* ---------------- render: HR intervention view ---------------- */
-  function hrFlaggedList() {
-    return individuals.map(function (p) { return { person: p, flags: computeHrFlags(p) }; }).filter(function (x) { return x.flags.length > 0; });
-  }
-  function ensureCase(p) {
-    var c = hrCaseState[p.name];
-    if (!c) {
-      c = { stage: suggestedStage(quartersFlagged(p)), finalDecision: null, owner: "", notes: "" };
-      hrCaseState[p.name] = c;
+  var hrData = null;
+  function loadHr() { return GC.api("/api/hr/cases").then(function (d) { hrData = d; renderHrView(); }); }
+  var ACTION_LABEL = { record_plan: "Save action plan", escalate: "Escalate", return_to_manager: "Return to manager", resolve: "Mark resolved", decide: "Record decision", reopen: "Reopen case", set_owner: "Set owner" };
+  function nextStageLabel(stage) { return { flagged: "senior manager", manager_review: "senior manager", senior_manager: "executive / HR review" }[stage] || ""; }
+  function hrControlsHtml(r) {
+    var acts = r.allowed_actions, c = r.case, out = "";
+    if (!acts.length) return '<p class="card-sub" style="margin:0;">No action available to you at this stage (' + esc(r.stage.label) + ").</p>";
+    if (acts.indexOf("record_plan") !== -1) {
+      out += '<div class="grid cols-2" style="gap:8px;"><label class="field"><span>Agreed action plan</span><textarea data-in="action_plan" placeholder="What will be done, by whom">' + esc(c.action_plan) + '</textarea></label>' +
+        '<label class="field"><span>Next review date</span><input type="date" data-in="review_date" value="' + esc(c.review_date) + '"></label></div>';
     }
-    return c;
-  }
-  var finalDecisionLabel = { continue: "Continuing intervention", terminate: "Employment terminated", resolved: "Resolved — issue no longer present" };
-  function hrActionButtonsHtml(c) {
-    if (c.stage === "closed") {
-      return '<span class="proj-meta">Closed: ' + (finalDecisionLabel[c.finalDecision] || "closed") + '</span>' +
-        '<button type="button" class="chip" data-hraction="reopen">Reopen case</button>';
+    if (acts.indexOf("escalate") !== -1 || acts.indexOf("decide") !== -1 || acts.indexOf("return_to_manager") !== -1) {
+      out += '<label class="field" style="margin-top:8px;"><span>Note (required to escalate)</span><input type="text" data-in="note" placeholder="Why this decision"></label>';
     }
-    if (c.stage === "exec_review") {
-      return '<button type="button" class="chip" data-hraction="continue">Continue intervention</button>' +
-        '<button type="button" class="chip" data-hraction="terminate">Terminate</button>' +
-        '<button type="button" class="chip" data-hraction="resolve">Resolved</button>';
+    if (acts.indexOf("decide") !== -1) {
+      out += '<label class="field" style="margin-top:8px;"><span>Executive / HR decision</span><select data-in="decision">' + Object.keys(hrData.decisions).map(function (k) { return '<option value="' + k + '">' + esc(hrData.decisions[k]) + "</option>"; }).join("") + "</select></label>";
     }
-    return '<button type="button" class="chip" data-hraction="escalate">Escalate to ' + nextStage(c.stage).label + '</button>' +
-      '<button type="button" class="chip" data-hraction="resolve">Mark resolved</button>';
-  }
-  function applyHrAction(name, action) {
-    var c = hrCaseState[name];
-    if (!c) return;
-    if (action === "escalate") c.stage = nextStage(c.stage).id;
-    else if (action === "resolve") { c.stage = "closed"; c.finalDecision = "resolved"; }
-    else if (action === "continue") { c.finalDecision = "continue"; } // stays at exec_review — monitored, not yet closed
-    else if (action === "terminate") { c.stage = "closed"; c.finalDecision = "terminate"; }
-    else if (action === "reopen") { c.stage = "flagged"; c.finalDecision = null; }
-    renderHrView();
-  }
-  function renderHrView() {
-    var flagged = hrFlaggedList();
-    flagged.forEach(function (x) { ensureCase(x.person); });
-    var withManagers = flagged.filter(function (x) { var s = hrCaseState[x.person.name].stage; return s === "dept_manager" || s === "senior_manager"; }).length;
-    var atExec = flagged.filter(function (x) { return hrCaseState[x.person.name].stage === "exec_review"; }).length;
-    var closed = flagged.filter(function (x) { return hrCaseState[x.person.name].stage === "closed"; }).length;
-
-    var statsHost = document.getElementById("hrStats");
-    statsHost.innerHTML = [
-      { k: "Total flagged", v: flagged.length + " of 64" },
-      { k: "With managers", v: withManagers },
-      { k: "Executive review", v: atExec },
-      { k: "Closed", v: closed }
-    ].map(function (s) { return '<div class="card"><div class="card-sub" style="margin:0 0 4px;">' + s.k + '</div><div style="font-size:22px;font-weight:650;">' + s.v + "</div></div>"; }).join("");
-
-    // ---- Simple view: insight + recommendation cards, with an escalation control ----
-    var cardsHost = document.getElementById("hrManagerCards");
-    cardsHost.innerHTML = flagged.length
-      ? flagged.map(function (x) {
-          var p = x.person, c = hrCaseState[p.name];
-          var sm = stageMeta(c.stage);
-          var reasons = x.flags.map(function (f) { return "<li>" + hrPlainReason(p, f) + "</li>"; }).join("");
-          var qf = quartersFlagged(p);
-          var topRec = hrRecommendations(p, x.flags)[0];
-          return '<div class="card hr-mgmt-card" data-name="' + p.name.replace(/"/g, "&quot;") + '" style="margin-bottom:10px;">' +
-            '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">' +
-              '<div><div style="font-weight:650;font-size:14px;">' + p.name + '</div><div class="proj-meta">' + p.role + " · " + p.dept + "</div></div>" +
-              badge(sm.badgeKind, sm.label) +
-            "</div>" +
-            '<ul style="margin:10px 0 10px;padding-left:18px;font-size:12.5px;color:var(--text-secondary);line-height:1.6;">' + reasons + "</ul>" +
-            '<p class="card-sub" style="margin:0 0 4px;"><b style="color:var(--text-primary);">Recommended:</b> ' + topRec + "</p>" +
-            '<p class="card-sub" style="margin:0 0 10px;">Flagged for ' + qf + " consecutive quarter" + (qf === 1 ? "" : "s") + ' (estimated)</p>' +
-            '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
-              hrActionButtonsHtml(c) +
-              '<button type="button" class="chip hr-report-btn">View detailed report →</button>' +
-            "</div>" +
-          "</div>";
-        }).join("")
-      : '<p class="card-sub">No employees currently flagged.</p>';
-
-    cardsHost.querySelectorAll(".hr-mgmt-card").forEach(function (card) {
-      var name = card.dataset.name;
-      card.querySelectorAll("[data-hraction]").forEach(function (btn) {
-        btn.addEventListener("click", function () { applyHrAction(name, btn.dataset.hraction); });
-      });
-      var reportBtn = card.querySelector(".hr-report-btn");
-      if (reportBtn) reportBtn.addEventListener("click", function () { openHrReport(name); });
-    });
-
-    // ---- Detailed view: full HR case tracker ----
-    var table = document.getElementById("hrCaseTable");
-    var rows = flagged.map(function (x) {
-      var p = x.person, c = hrCaseState[p.name];
-      var stageOptions = ESCALATION_STAGES.filter(function (s) { return s.id !== "closed"; }).map(function (s) {
-        return '<option value="' + s.id + '"' + (c.stage === s.id ? " selected" : "") + ">" + s.label + "</option>";
-      }).join("") + '<option value="closed"' + (c.stage === "closed" ? " selected" : "") + ">Closed</option>";
-      return "<tr class=\"hr-case-row\" data-name=\"" + p.name.replace(/"/g, "&quot;") + "\"><td><b>" + p.name + '</b><div class="proj-meta">' + p.role + " · " + p.dept + "</div></td>" +
-        "<td>" + hrFlagPillsHtml(x.flags) + "</td><td>" + salaryBandCompactHtml(p.role, p.base) + '</td><td><select class="hr-status">' + stageOptions + '</select></td>' +
-        '<td><input type="text" class="hr-owner" placeholder="Assign owner" value="' + c.owner.replace(/"/g, "&quot;") + '"></td>' +
-        '<td><input type="text" class="hr-notes" placeholder="Add a note" value="' + c.notes.replace(/"/g, "&quot;") + '"></td>' +
-        '<td><button type="button" class="chip hr-report-btn">Report →</button></td></tr>';
-    }).join("");
-    table.innerHTML = '<thead><tr><th>Employee</th><th>Flag(s)</th><th>Pay band (P25 · median · P75)</th><th>Stage</th><th>Owner</th><th>Notes</th><th></th></tr></thead><tbody>' +
-      (rows || '<tr><td colspan="7" style="color:var(--text-muted);padding:16px 10px;">No employees currently flagged.</td></tr>') + "</tbody>";
-
-    table.querySelectorAll(".hr-case-row").forEach(function (tr) {
-      var name = tr.dataset.name;
-      tr.querySelector(".hr-status").addEventListener("change", function (e) {
-        hrCaseState[name].stage = e.target.value;
-        if (e.target.value !== "closed") hrCaseState[name].finalDecision = null;
-        renderHrView();
-      });
-      tr.querySelector(".hr-owner").addEventListener("input", function (e) { hrCaseState[name].owner = e.target.value; });
-      tr.querySelector(".hr-notes").addEventListener("input", function (e) { hrCaseState[name].notes = e.target.value; });
-      tr.querySelector(".hr-report-btn").addEventListener("click", function () { openHrReport(name); });
-    });
-
-    // ---- toggle which one is visible ----
-    var isSimple = state.hrViewMode !== "detail";
-    document.getElementById("hrManagerCards").hidden = !isSimple;
-    document.getElementById("hrDetailWrap").hidden = isSimple;
-    document.getElementById("hrCardTitle").textContent = isSimple ? "Employees who may need a look" : "HR intervention case tracker";
-    document.getElementById("hrCardSub").textContent = isSimple
-      ? "Insights and a recommended next step per person, with the escalation path (department manager → senior manager → executive review) — open the detailed report for the full financial and non-financial breakdown"
-      : "Full detail for HR — pay bands, flag reasons, escalation stage, owner and notes";
-    document.querySelectorAll("#hrViewModeSeg button").forEach(function (b) {
-      b.setAttribute("aria-pressed", b.dataset.hrmode === (isSimple ? "simple" : "detail") ? "true" : "false");
-    });
-  }
-
-  /* ---------------- HR detailed performance report (modal) ---------------- */
-  function scoreBandLabel(pct) {
-    return pct < 0.70 ? "Needs improvement" : pct < 0.90 ? "Meeting expectations" : "Exceeding expectations";
-  }
-  function scoreBandKind(pct) {
-    return pct < 0.70 ? "critical" : pct < 0.90 ? "warning" : "good";
-  }
-  function renderHrReportBody(name) {
-    var p = individuals.filter(function (x) { return x.name === name; })[0];
-    if (!p) return "";
-    var c = ensureCase(p);
-    var flags = computeHrFlags(p);
-    var kpi = computeKpiSim(p);
-    var sm = stageMeta(c.stage);
-    var qf = quartersFlagged(p);
-    var recs = hrRecommendations(p, flags);
-
-    var payContext = flags.filter(function (f) { return f.id === "pay-equity" || f.id === "income-volatility"; })
-      .map(function (f) { return "<li>" + hrPlainReason(p, f) + "</li>"; }).join("");
-
-    return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px;">' +
-        '<div><h3 style="margin:0 0 2px;">' + p.name + '</h3><p class="card-sub" style="margin:0;">' + p.role + " · " + p.dept + "</p></div>" +
-        badge(sm.badgeKind, sm.label) +
-      "</div>" +
-      '<div class="gov-breakdown" style="margin:0 0 16px;">' +
-        '<div class="gov-breakdown-title">Overall performance (estimated)</div>' +
-        meter(kpi.pct, scoreBandKind(kpi.pct)) +
-        '<p class="card-sub" style="margin:8px 0 0;">' + scoreBandLabel(kpi.pct) + " · flagged for " + qf + " consecutive quarter" + (qf === 1 ? "" : "s") + " (estimated) · currently: " + sm.label + "</p>" +
-      "</div>" +
-      '<div class="grid cols-2" style="margin-bottom:16px;">' +
-        '<div class="card">' +
-          '<h3 style="font-size:13px;">Financial component</h3>' +
-          '<p class="card-sub">Revenue/NGP/collections-linked attainment, weighted ' + fmtPct(kpi.financialShare, 0) + " of this role's overall score</p>" +
-          meter(kpi.finPct, kpi.finPct < 0.70 ? "critical" : kpi.finPct < 0.90 ? "warning" : "good") +
-        "</div>" +
-        '<div class="card">' +
-          '<h3 style="font-size:13px;">Non-financial component</h3>' +
-          '<p class="card-sub">' + kpi.metric + " — the real formula for this department (Methodology, section 3)</p>" +
-          meter(kpi.opsPct, kpi.opsPct < 0.70 ? "critical" : kpi.opsPct < 0.90 ? "warning" : "good") +
-          '<p class="card-sub" style="margin-top:8px;">' + kpi.opsActual + "% actual vs. " + kpi.opsTarget + "% target (estimated)</p>" +
-        "</div>" +
-      "</div>" +
-      (payContext ? '<div style="margin-bottom:16px;"><h3 style="font-size:13px;margin:0 0 6px;">Pay context</h3><ul style="margin:0;padding-left:18px;font-size:12.5px;color:var(--text-secondary);line-height:1.6;">' + payContext + "</ul></div>" : "") +
-      '<div style="margin-bottom:16px;"><h3 style="font-size:13px;margin:0 0 6px;">Recommendations</h3><ul style="margin:0;padding-left:18px;font-size:12.5px;color:var(--text-secondary);line-height:1.6;">' +
-        recs.map(function (r) { return "<li>" + r + "</li>"; }).join("") +
-      "</ul></div>" +
-      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' + hrActionButtonsHtml(c) + "</div>";
-  }
-  function openHrReport(name) {
-    document.getElementById("hrReportBody").innerHTML = renderHrReportBody(name);
-    document.getElementById("hrReportBody").querySelectorAll("[data-hraction]").forEach(function (btn) {
-      btn.addEventListener("click", function () { applyHrAction(name, btn.dataset.hraction); closeHrReport(); });
-    });
-    document.getElementById("hrReportOverlay").hidden = false;
-  }
-  function closeHrReport() {
-    document.getElementById("hrReportOverlay").hidden = true;
-  }
-
-  /* ---------------- HR case log: CSV export / import ---------------- */
-  function csvEscape(v) {
-    v = String(v == null ? "" : v);
-    return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
-  }
-  function parseCsvLine(line) {
-    var out = [], cur = "", inQuotes = false;
-    for (var i = 0; i < line.length; i++) {
-      var ch = line[i];
-      if (inQuotes) {
-        if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
-        else if (ch === '"') { inQuotes = false; }
-        else { cur += ch; }
-      } else if (ch === '"') { inQuotes = true; }
-      else if (ch === ",") { out.push(cur); cur = ""; }
-      else { cur += ch; }
-    }
-    out.push(cur);
+    out += '<div class="row" style="margin-top:10px;">' + acts.filter(function (a) { return a !== "set_owner"; }).map(function (a) {
+      var label = a === "escalate" ? "Escalate to " + nextStageLabel(c.stage) : ACTION_LABEL[a];
+      return '<button type="button" class="btn small' + (a === "record_plan" ? " primary" : "") + '" data-hr-act="' + a + '">' + label + "</button>";
+    }).join("") + "</div>";
     return out;
   }
-  function exportHrCaseCsv() {
-    var flagged = hrFlaggedList();
-    var header = ["Employee", "Role", "Department", "Flags", "Stage", "Final decision", "Quarters flagged", "Owner", "Notes"];
-    var lines = [header.map(csvEscape).join(",")];
-    flagged.forEach(function (x) {
-      var p = x.person, c = ensureCase(p);
-      var flagLabels = x.flags.map(function (f) { return f.label; }).join("; ");
-      var stageLabel = stageMeta(c.stage).label;
-      var decisionLabel = c.finalDecision ? finalDecisionLabel[c.finalDecision] : "";
-      lines.push([p.name, p.role, p.dept, flagLabels, stageLabel, decisionLabel, quartersFlagged(p), c.owner, c.notes].map(csvEscape).join(","));
-    });
-    var csvText = lines.join("\n");
-    var filename = "hr-intervention-case-log-" + new Date().toISOString().slice(0, 10) + ".csv";
-
-    function fallbackDownload() {
-      // Plain <a download> path — used when this page is a standalone file (not the hosted
-      // artifact viewer), e.g. opened locally, from GitHub Pages, or from Google Drive.
-      var blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement("a");
-      a.href = url; a.download = filename;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      setHrImportStatus("Downloaded " + filename + ".");
-    }
-
-    // Inside the hosted artifact viewer, a plain <a download>/blob link is inert — the frame isn't
-    // granted download permission, only the `downloads` capability is. window.claude only exists
-    // there (never on a standalone copy of this file), so this branch never fires elsewhere.
-    if (window.claude && typeof window.claude.use === "function") {
-      window.claude.use("downloads").then(function (downloads) {
-        if (!downloads) { fallbackDownload(); return; }
-        downloads.save({ filename: filename, data: csvText }).then(function () {
-          setHrImportStatus("Saved " + filename + ".");
-        }, function (err) {
-          var code = err && err.code;
-          if (code === "declined") setHrImportStatus("Download was declined.");
-          else if (code === "rate_limited") setHrImportStatus("A save prompt is already open — try again in a moment.");
-          else setHrImportStatus("Couldn't save the file here (" + (code || "unavailable") + ").");
+  function wireHrControls(host) {
+    host.querySelectorAll("[data-hr-case]").forEach(function (box) {
+      box.querySelectorAll("[data-hr-act]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          var body = { employee_id: box.dataset.hrCase, action: b.dataset.hrAct };
+          box.querySelectorAll("[data-in]").forEach(function (i) { body[i.dataset.in] = i.value; });
+          GC.api("/api/hr/action", { body: body }).then(function () { GC.toast("Case updated"); GC.closeModal(); invalidate(["performance"]); return loadHr(); }).catch(function (e) { GC.toast(e.message); });
         });
-      }, function () { fallbackDownload(); });
-    } else {
-      fallbackDownload();
-    }
+      });
+    });
   }
-  function setHrImportStatus(msg) {
-    var el2 = document.getElementById("hrImportStatus");
-    if (el2) el2.textContent = msg;
+  function hrFlowHtml(r) {
+    var a = r.assessment, k = a.affected_kpis[0];
+    var survey = a.survey ? (a.survey.signals.length ? "<ul>" + a.survey.signals.map(function (s) { return "<li><b>" + esc(s.theme) + ":</b> " + esc(s.detail) + "</li>"; }).join("") + "</ul>" : "<p>No adverse survey signals.</p>")
+      : '<p class="muted">Individual survey context is restricted to Executive/HR review.</p>';
+    return '<div class="flow">' +
+      '<div><div class="h">1 · Performance gap</div><b>' + r.summary.overall.toFixed(0) + "%</b> overall — " + a.gap_points.toFixed(1) + " pts short<ul>" + a.flags.map(function (f) { return "<li>" + esc(f.label) + "</li>"; }).join("") + "</ul></div>" +
+      "<div><div class=\"h\">2 · Affected KPI</div>" + (k ? "<b>" + esc(k.name) + "</b><br>" + GC.fmt(k.actual, k.unit) + " vs. " + GC.fmt(k.target, k.unit) + " target (" + k.attainment_pct.toFixed(0) + "%), −" + k.points_lost.toFixed(1) + " pts" +
+        (a.affected_kpis.length > 1 ? '<br><span class="muted">+' + (a.affected_kpis.length - 1) + " more</span>" : "") : "—") + "</div>" +
+      '<div><div class="h">3 · Possible cause / context</div>' + (k ? "<ul>" + k.possible_causes.map(function (c) { return "<li>" + esc(c) + "</li>"; }).join("") + "</ul>" : "") + survey + "</div>" +
+      '<div><div class="h">4 · Suggested action</div><ul>' + a.recommended_actions.slice(0, 3).map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>" +
+        (a.related_org_actions.length ? '<span class="muted">Linked org action: ' + a.related_org_actions.map(function (o) { return esc(o.id + " " + o.action + " (" + o.status + ")"); }).join("; ") + "</span>" : "") + "</div>" +
+      '<div><div class="h">5 · Manager review → escalation</div>' + (r.case.action_plan ? "<b>Plan:</b> " + esc(r.case.action_plan) + (r.case.review_date ? "<br>Review " + esc(r.case.review_date) : "") : '<span class="muted">Awaiting manager review</span>') +
+        "<br>Stage: " + esc(r.stage.label) + (r.case.stage === "flagged" && a.suggested_stage !== "flagged" ? '<br><span class="err">Suggested: escalate (' + a.quarters_below_75 + " qtrs below 75%)</span>" : "") + "</div>" +
+      "</div>";
   }
-  function importHrCaseCsv(text) {
-    var lines = text.split(/\r?\n/).filter(function (l) { return l.trim().length; });
-    if (!lines.length) return;
-    var header = parseCsvLine(lines[0]).map(function (h) { return h.trim().toLowerCase(); });
-    var idx = { name: header.indexOf("employee"), stage: header.indexOf("stage"), owner: header.indexOf("owner"), notes: header.indexOf("notes"), decision: header.indexOf("final decision") };
-    if (idx.name === -1) { setHrImportStatus('Not recognized — no "Employee" column found in that CSV.'); return; }
-    var applied = 0;
-    for (var i = 1; i < lines.length; i++) {
-      var cols = parseCsvLine(lines[i]);
-      var name = cols[idx.name];
-      if (!name) continue;
-      var person = individuals.filter(function (p) { return p.name === name; })[0];
-      if (!person) continue;
-      var stageRaw = idx.stage !== -1 ? (cols[idx.stage] || "") : "";
-      var stageMatch = ESCALATION_STAGES.filter(function (s) { return s.label === stageRaw; })[0];
-      var decisionRaw = idx.decision !== -1 ? (cols[idx.decision] || "") : "";
-      var decisionKey = null;
-      Object.keys(finalDecisionLabel).forEach(function (k) { if (finalDecisionLabel[k] === decisionRaw) decisionKey = k; });
-      hrCaseState[name] = {
-        stage: stageMatch ? stageMatch.id : suggestedStage(quartersFlagged(person)),
-        finalDecision: decisionKey,
-        owner: idx.owner !== -1 ? (cols[idx.owner] || "") : "",
-        notes: idx.notes !== -1 ? (cols[idx.notes] || "") : ""
-      };
-      applied++;
-    }
-    renderHrView();
-    setHrImportStatus("Imported notes for " + applied + " employee" + (applied === 1 ? "" : "s") + ".");
+  function renderHrView() {
+    if (!hrData) return;
+    var cases = hrData.cases;
+    function count(fn) { return cases.filter(fn).length; }
+    document.getElementById("hrStats").innerHTML = [
+      { k: "Flagged in your scope", v: cases.length },
+      { k: "With manager", v: count(function (r) { return r.case.stage === "flagged" || r.case.stage === "manager_review"; }) },
+      { k: "Escalated (senior mgr / exec-HR)", v: count(function (r) { return r.case.stage === "senior_manager" || r.case.stage === "exec_hr_review"; }) },
+      { k: "Closed", v: count(function (r) { return r.case.stage === "closed"; }) }
+    ].map(function (s) { return '<div class="card"><div class="card-sub" style="margin:0 0 4px;">' + s.k + '</div><div style="font-size:22px;font-weight:650;">' + s.v + "</div></div>"; }).join("");
+    document.getElementById("hrThemes").innerHTML = themesHtml(hrData.team_themes);
+
+    var cardsHost = document.getElementById("hrManagerCards");
+    cardsHost.innerHTML = cases.length ? cases.map(function (r) {
+      return '<div class="card" style="margin-bottom:12px;" data-hr-case="' + esc(r.employee.id) + '">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;"><div><div style="font-weight:650;font-size:14px;">' + esc(r.employee.name) + '</div><div class="proj-meta">' + esc(r.employee.title) + " · " + esc(r.employee.dept) +
+        (r.manager ? " · manager " + esc(r.manager.name) : "") + '</div></div><div class="row">' + badge(r.stage.kind, r.stage.label) + '<button type="button" class="chip" data-hr-report="' + esc(r.employee.id) + '">Full report →</button></div></div>' +
+        hrFlowHtml(r) + hrControlsHtml(r) + "</div>";
+    }).join("") : '<p class="card-sub">No one in your scope currently has a material performance gap.</p>';
+
+    var table = document.getElementById("hrCaseTable");
+    var showPay = hrData.individual_survey_visible;
+    table.innerHTML = "<thead><tr><th>Employee</th><th>Overall</th><th>Affected KPI</th><th>Stage</th><th>Suggested</th>" + (showPay ? "<th>Pay flags (HR)</th>" : "") + "<th>Owner</th><th>Last update</th><th></th></tr></thead><tbody>" +
+      (cases.map(function (r) {
+        var last = r.case.history.length ? r.case.history[r.case.history.length - 1] : null;
+        var k = r.assessment.affected_kpis[0];
+        var ownerCell = r.allowed_actions.indexOf("set_owner") !== -1
+          ? '<span data-hr-case="' + esc(r.employee.id) + '"><input type="text" class="inp" style="width:130px" data-in="owner" value="' + esc(r.case.owner) + '" placeholder="Assign owner"> <button type="button" class="chip" data-hr-act="set_owner">Set</button></span>'
+          : esc(r.case.owner || "—");
+        return "<tr><td><b>" + esc(r.employee.name) + '</b><div class="proj-meta">' + esc(r.employee.title) + "</div></td><td>" + scoreBadge(r.summary.overall) + "</td><td>" + (k ? esc(k.name) + " (" + k.attainment_pct.toFixed(0) + "%)" : "—") + "</td><td>" + badge(r.stage.kind, r.stage.label) +
+          "</td><td>" + esc(hrData.stages.filter(function (s) { return s.id === r.assessment.suggested_stage; })[0].label) + "</td>" + (showPay ? "<td>" + hrFlagPillsHtml(r.pay_flags || []) + "</td>" : "") +
+          "<td>" + ownerCell + '</td><td class="proj-meta">' + (last ? esc(last.by_name + " · " + last.action + " · " + last.at.slice(0, 10)) : "—") + '</td><td><button type="button" class="chip" data-hr-report="' + esc(r.employee.id) + '">Report →</button></td></tr>';
+      }).join("") || '<tr><td colspan="9" class="muted">No open cases.</td></tr>') + "</tbody>";
+
+    var isSimple = state.hrViewMode !== "detail";
+    cardsHost.hidden = !isSimple;
+    document.getElementById("hrDetailWrap").hidden = isSimple;
+    document.getElementById("hrCardTitle").textContent = isSimple ? "Performance gaps that need a decision" : "HR intervention case tracker";
+    document.getElementById("hrCardSub").textContent = isSimple
+      ? "Each case shows the gap, the KPI causing it, the likely cause, a suggested action and the review/escalation controls available to you"
+      : "Tracker view — stage, suggested stage, owner and latest update for every case in your scope";
+    document.querySelectorAll("#hrViewModeSeg button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.hrmode === (isSimple ? "simple" : "detail") ? "true" : "false"); });
+    [cardsHost, table].forEach(function (h) {
+      wireHrControls(h);
+      h.querySelectorAll("[data-hr-report]").forEach(function (b) { b.addEventListener("click", function () { openHrReport(b.dataset.hrReport); }); });
+    });
+  }
+  function openHrReport(id) {
+    var r = hrData.cases.filter(function (x) { return x.employee.id === id; })[0];
+    if (!r) return;
+    var a = r.assessment;
+    var body = GC.openModal(r.employee.name + " — detailed performance report", r.employee.title + " · " + r.employee.dept + " · " + esc(r.stage.label),
+      '<div data-hr-case="' + esc(id) + '">' + hrFlowHtml(r) +
+      '<h3 style="font-size:13px;margin:14px 0 6px;">All affected KPIs</h3><div class="tscroll"><table class="data-table"><thead><tr><th>KPI</th><th class="num">Target</th><th class="num">Actual</th><th class="num">Achieved</th><th class="num">Pts lost</th><th>Pattern &amp; causes</th><th>Suggested action</th></tr></thead><tbody>' +
+      a.affected_kpis.map(function (k) { return "<tr><td>" + esc(k.name) + '</td><td class="num">' + GC.fmt(k.target, k.unit) + '</td><td class="num">' + GC.fmt(k.actual, k.unit) + '</td><td class="num">' + k.attainment_pct.toFixed(0) + '%</td><td class="num">' + k.points_lost.toFixed(1) + "</td><td>" + k.possible_causes.map(esc).join("<br>") + "</td><td>" + esc(k.suggested_action) + "</td></tr>"; }).join("") +
+      "</tbody></table></div>" +
+      (a.survey && a.survey.waves.length ? '<h3 style="font-size:13px;margin:14px 0 6px;">Pulse survey history <span class="level-pill">HR-confidential</span></h3><div class="tscroll"><table class="data-table"><thead><tr><th>Wave</th><th class="num">Engagement</th><th class="num">Mgr support</th><th class="num">Workload</th><th class="num">Career</th><th class="num">Belonging</th><th>Comment</th></tr></thead><tbody>' +
+        a.survey.waves.map(function (w) { return "<tr><td>" + esc(w.wave) + '</td><td class="num">' + w.engagement + '</td><td class="num">' + w.manager_support + '</td><td class="num">' + w.workload + '</td><td class="num">' + w.career_growth + '</td><td class="num">' + w.belonging + "</td><td>" + esc(w.comment) + "</td></tr>"; }).join("") + "</tbody></table></div>" : "") +
+      '<h3 style="font-size:13px;margin:14px 0 6px;">Case history</h3>' + (r.case.history.length ? '<div class="case-hist">' + r.case.history.map(function (h) { return esc(h.at.slice(0, 16).replace("T", " ") + " · " + h.by_name + " · " + h.action + " (" + h.from + " → " + h.to + ")" + (h.note ? " — " + h.note : "")); }).join("<br>") + "</div>" : '<p class="card-sub">No actions yet.</p>') +
+      '<h3 style="font-size:13px;margin:14px 0 6px;">Your actions</h3>' + hrControlsHtml(r) + '<div class="row" style="margin-top:12px;"><button type="button" class="btn small" data-open-card="' + esc(id) + '">Open scorecard →</button></div></div>');
+    wireHrControls(body);
+    wireOpenCard(body);
+  }
+  function csvEscape(v) { v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  function exportHrCaseCsv() {
+    if (!hrData) return;
+    var lines = [["Employee ID", "Employee", "Role", "Department", "Overall %", "Affected KPI", "Stage", "Suggested stage", "Action plan", "Review date", "Owner", "Final decision"].join(",")];
+    hrData.cases.forEach(function (r) {
+      var k = r.assessment.affected_kpis[0];
+      lines.push([r.employee.id, r.employee.name, r.employee.title, r.employee.dept, r.summary.overall, k ? k.name : "", r.stage.label, r.assessment.suggested_stage, r.case.action_plan, r.case.review_date, r.case.owner, r.case.final_decision || ""].map(csvEscape).join(","));
+    });
+    var blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "hr-intervention-cases-" + new Date().toISOString().slice(0, 10) + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  /* ---------------- render: access & security view ---------------- */
+  function loadAccess() {
+    return Promise.all([GC.api("/api/access-matrix"), GC.api("/api/audit")]).then(function (res) {
+      var m = res[0], au = res[1];
+      var lvlIdx = { director: 1, senior_manager: 2, manager: 3, employee: 4 }[m.your_level];
+      document.getElementById("accessContent").innerHTML =
+        '<div class="notice">You are signed in as <b>' + esc(SESSION.user.name) + "</b> (" + GC.levelLabel[SESSION.user.level] + "). Your column is highlighted. These rules are enforced on the server for every request — see SECURITY.md and the <a href=\"/architecture\">architecture &amp; data-flow diagram</a>.</div>" +
+        '<div class="card" style="margin-bottom:14px;"><h3>What each level can see and do</h3><div class="tscroll"><table class="data-table matrix"><thead><tr><th>Data / capability</th>' + m.levels.map(function (l, i) { return '<th class="' + (i + 1 === lvlIdx ? "you" : "") + '">' + l + "</th>"; }).join("") + "</tr></thead><tbody>" +
+        m.rows.map(function (r) { return "<tr>" + r.map(function (c, i) { return '<td class="' + (i === lvlIdx ? "you" : "") + '">' + esc(c) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div></div>" +
+        '<div class="card"><h3>Audit log</h3><p class="card-sub">Weightage changes, AI approvals, HR case actions, sign-ins and sensitive reads — newest first (' + (SESSION.user.level === "manager" ? "your own actions" : "your scope") + ")</p>" +
+        '<div class="tscroll"><table class="data-table"><thead><tr><th>When (UTC)</th><th>Who</th><th>Action</th><th>Target</th></tr></thead><tbody>' +
+        (au.entries.map(function (e) { return "<tr><td>" + esc(e.at.replace("T", " ").slice(0, 19)) + "</td><td>" + esc(e.actor_name || e.actor) + "</td><td>" + esc(e.action) + "</td><td>" + esc(e.target_name || e.target) + "</td></tr>"; }).join("") || '<tr><td colspan="4" class="muted">No entries yet.</td></tr>') +
+        "</tbody></table></div></div>";
+    });
   }
 
   /* ---------------- render: projects view ---------------- */
@@ -2032,13 +1517,14 @@
     var table = document.getElementById("govTable");
     var rows = dealTypes.map(function (dt) {
       var av = activeVersion(dt.id);
-      var action = '<button class="gov-edit-btn" type="button" data-deal="' + dt.id + '">Edit →</button>';
+      // Attribution governance is a Director setting (it reads company NGP history, which only the Director may load).
+      var action = SESSION && SESSION.user.level === "director" ? '<button class="gov-edit-btn" type="button" data-deal="' + dt.id + '">Edit →</button>' : '<span class="muted" style="font-size:11.5px;">Director edits</span>';
       return "<tr><td>" + dt.label + '</td><td><span class="gov-version-tag">' + av.id + "</span></td><td>" + av.effectiveFrom +
         '</td><td style="text-align:right;">' + action + "</td></tr>";
     }).join("");
     table.innerHTML = '<thead><tr><th>Deal type</th><th>Active version</th><th>Effective from</th><th></th></tr></thead><tbody>' + rows + "</tbody>";
     table.querySelectorAll(".gov-edit-btn").forEach(function (btn) {
-      btn.addEventListener("click", function () { openGovModal(btn.dataset.deal); });
+      btn.addEventListener("click", function () { loadCompany().then(function () { openGovModal(btn.dataset.deal); }); });
     });
 
     var badgeTag = document.getElementById("govHeaderVersionTag");
@@ -2320,11 +1806,40 @@
   }
 
   /* ---------------- wiring ---------------- */
+  // Each tab loads its own data the first time it's opened. The tab list comes from the server (policy.nav_for),
+  // but that's only for convenience: each endpoint independently refuses roles that may not use it.
+  var VIEW_LOADERS = {
+    company: function () { return loadCompany().then(function () { renderCompanyStats(); renderCompanyTrend(); renderFlags(); }); },
+    departments: function () { return GC.api("/api/departments").then(function (d) { departments = d.departments; renderDepartmentsView(); }); },
+    roi: loadRoi,
+    individuals: function () { return GC.api("/api/individuals").then(function (d) { individuals = d.individuals; renderIndividualsView(); }); },
+    performance: loadPerformance,
+    hr: loadHr,
+    weights: loadWeights,
+    ai_kpi: loadAi,
+    projects: function () { return GC.api("/api/projects").then(function (d) { projects = d.projects; renderProjectsView(); }); },
+    access: loadAccess,
+    methodology: function () { renderGovernanceTable(); return Promise.resolve(); }
+  };
+  var VIEW_HOST = { company: "companyStats", departments: "deptScoreTable", roi: "roiContent", individuals: "indivTable", performance: "perfContent", hr: "hrManagerCards",
+    weights: "weightsContent", ai_kpi: "aiContent", projects: "projectList", access: "accessContent", methodology: "govTable" };
+  var loadedViews = {};
+  function ensureView(view) {
+    if (loadedViews[view] || !VIEW_LOADERS[view]) return;
+    loadedViews[view] = true;
+    VIEW_LOADERS[view]().catch(function (e) { loadedViews[view] = false; showError(VIEW_HOST[view], e); });
+  }
+  function invalidate(views) {
+    views.forEach(function (v) { loadedViews[v] = false; });
+    if (views.indexOf(state.view) !== -1) ensureView(state.view);
+  }
   function switchView(view) {
+    if (SESSION && SESSION.nav.indexOf(view) === -1) view = SESSION.nav[0];
     state.view = view;
     document.querySelectorAll("nav.tabs button").forEach(function (b) { b.setAttribute("aria-selected", b.dataset.view === view ? "true" : "false"); });
     document.querySelectorAll("main .view").forEach(function (s) { s.hidden = s.id !== "view-" + view; });
     document.getElementById("periodFilterRow").style.display = view === "company" ? "flex" : "none";
+    ensureView(view);
   }
   document.querySelectorAll("nav.tabs button").forEach(function (b) {
     b.addEventListener("click", function () { switchView(b.dataset.view); syncUrlFromState(); });
@@ -2342,8 +1857,7 @@
     b.addEventListener("click", function () {
       document.querySelectorAll(".chip[data-pay]").forEach(function (x) { x.setAttribute("aria-pressed", "false"); });
       b.setAttribute("aria-pressed", "true");
-      state.pay = b.dataset.pay;
-      state.indivPage = 1;
+      state.pay = b.dataset.pay; state.indivPage = 1;
       renderIndividualsView();
     });
   });
@@ -2351,51 +1865,30 @@
     b.addEventListener("click", function () {
       document.querySelectorAll(".chip[data-dept]").forEach(function (x) { x.setAttribute("aria-pressed", "false"); });
       b.setAttribute("aria-pressed", "true");
-      state.dept = b.dataset.dept;
-      state.indivPage = 1;
+      state.dept = b.dataset.dept; state.indivPage = 1;
       renderIndividualsView();
     });
   });
-  var indivSearchInput = document.getElementById("indivSearch");
-  if (indivSearchInput) {
-    indivSearchInput.addEventListener("input", function (e) {
-      state.indivSearch = e.target.value;
-      state.indivPage = 1;
-      renderIndividualsView();
-    });
-  }
+  document.getElementById("indivSearch").addEventListener("input", function (e) {
+    state.indivSearch = e.target.value; state.indivPage = 1;
+    renderIndividualsView();
+  });
   document.querySelectorAll("#hrViewModeSeg button").forEach(function (b) {
-    b.addEventListener("click", function () {
-      state.hrViewMode = b.dataset.hrmode;
-      renderHrView();
-    });
+    b.addEventListener("click", function () { state.hrViewMode = b.dataset.hrmode; renderHrView(); });
   });
-  var hrExportBtn = document.getElementById("hrExportBtn");
-  if (hrExportBtn) hrExportBtn.addEventListener("click", exportHrCaseCsv);
-  var hrImportInput = document.getElementById("hrImportInput");
-  if (hrImportInput) {
-    hrImportInput.addEventListener("change", function (e) {
-      var file = e.target.files && e.target.files[0];
-      if (!file) return;
-      var reader = new FileReader();
-      reader.onload = function () { importHrCaseCsv(String(reader.result || "")); };
-      reader.onerror = function () { setHrImportStatus("Couldn't read that file."); };
-      reader.readAsText(file);
-      hrImportInput.value = "";
-    });
-  }
+  document.getElementById("hrExportBtn").addEventListener("click", exportHrCaseCsv);
   var toggleMap = {
     trendTable: { chart: "trendChartHost", legend: "trendLegend" },
     collTable: { chart: "collChartHost" },
     deptTable: { chart: "deptChartHost", legend: "deptLegend" },
     waterfallTable: { chart: "waterfallChartHost" }
   };
-  document.querySelectorAll(".table-toggle").forEach(function (btn) {
+  document.querySelectorAll(".table-toggle[data-target]").forEach(function (btn) {
     btn.addEventListener("click", function () {
       var targetId = btn.dataset.target;
       var target = document.getElementById(targetId);
       var map = toggleMap[targetId];
-      var showingTable = target.hidden; // about to show
+      var showingTable = target.hidden;
       target.hidden = !target.hidden;
       if (map) {
         var chartEl = document.getElementById(map.chart);
@@ -2406,72 +1899,56 @@
     });
   });
 
-  var themeBtn = document.getElementById("themeToggle");
   var root = document.getElementById("root");
-  var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-  var currentTheme = prefersDark ? "dark" : "light";
-  function applyTheme() {
-    root.setAttribute("data-theme", currentTheme);
-    themeBtn.textContent = currentTheme === "dark" ? "Switch to light" : "Switch to dark";
-  }
-  themeBtn.addEventListener("click", function () {
-    currentTheme = currentTheme === "dark" ? "light" : "dark";
-    applyTheme();
-  });
-  applyTheme();
-
-  // Cross-link to the standalone employee dashboard: the real claude.ai URL when hosted there,
-  // a sibling file when this page is opened standalone (same folder as employee-dashboard.html).
-  var toEmployeeLink = document.getElementById("toEmployeeLink");
-  if (toEmployeeLink && window.claude && typeof window.claude.use === "function") {
-    toEmployeeLink.href = "https://claude.ai/artifact/JuvwZxjo5vYPpHHSgncXRZ";
-  }
+  GC.theme(root, document.getElementById("themeToggle"));
+  document.getElementById("logoutBtn").addEventListener("click", GC.logout);
 
   var govOverlay = document.getElementById("govOverlay");
   document.getElementById("govClose").addEventListener("click", closeGovModal);
   govOverlay.addEventListener("click", function (e) { if (e.target === govOverlay) closeGovModal(); });
-  var hrReportOverlay = document.getElementById("hrReportOverlay");
-  document.getElementById("hrReportClose").addEventListener("click", closeHrReport);
-  hrReportOverlay.addEventListener("click", function (e) { if (e.target === hrReportOverlay) closeHrReport(); });
-  document.addEventListener("keydown", function (e) {
-    if (e.key !== "Escape") return;
-    if (!govOverlay.hidden) closeGovModal();
-    if (!hrReportOverlay.hidden) closeHrReport();
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !govOverlay.hidden) closeGovModal(); });
+  document.getElementById("govHeaderEditBtn").addEventListener("click", function () {
+    loadCompany().then(function () { openGovModal(dealTypes[0].id); }).catch(function (e) { GC.toast(e.message); });
   });
-  document.getElementById("govHeaderEditBtn").addEventListener("click", function () { openGovModal(dealTypes[0].id); });
 
   /* ---------------- URL state sync (?view=) ---------------- */
-  // Best-effort: wrapped in try/catch since the History/URL APIs can be restricted in some
-  // sandboxed hosting contexts — the dashboard still works with in-memory view state if so.
+  // The URL only picks a tab. Asking for a tab your role can't use falls back to your first tab, and the data
+  // behind it would be refused by the API anyway.
   function syncUrlFromState() {
     try {
       var params = new URLSearchParams(window.location.search);
       params.set("view", state.view);
-      var newUrl = window.location.pathname + "?" + params.toString() + window.location.hash;
-      window.history.pushState({ view: state.view }, "", newUrl);
+      window.history.pushState({ view: state.view }, "", window.location.pathname + "?" + params.toString() + window.location.hash);
     } catch (e) { /* ignore — URL stays as-is */ }
   }
   function applyStateFromUrl() {
-    var initialView = "company";
+    var initialView = SESSION.nav[0];
     try {
-      var params = new URLSearchParams(window.location.search);
-      var v = params.get("view");
-      if (v && document.getElementById("view-" + v)) initialView = v;
-    } catch (e) { /* ignore malformed/unavailable URL state, fall back to defaults */ }
+      var v = new URLSearchParams(window.location.search).get("view");
+      if (v && SESSION.nav.indexOf(v) !== -1) initialView = v;
+    } catch (e) { /* ignore malformed URL state */ }
     switchView(initialView);
   }
-  window.addEventListener("popstate", applyStateFromUrl);
+  window.addEventListener("popstate", function () { if (SESSION) applyStateFromUrl(); });
 
   /* ---------------- init ---------------- */
-  renderCompanyStats();
-  renderCompanyTrend();
-  renderFlags();
-  renderDepartmentsView();
-  renderIndividualsView();
-  renderHrView();
-  renderProjectsView();
-  renderGovernanceTable();
-  applyStateFromUrl();
+  GC.api("/api/session").then(function (s) {
+    if (s.user.level === "employee") { window.location.replace("/employee"); return; }
+    SESSION = s;
+    var u = s.user;
+    document.getElementById("userChip").innerHTML = '<span class="level-pill">' + GC.levelLabel[u.level] + "</span><b>" + esc(u.name) + "</b>" + esc(u.title) +
+      (u.scope_depts && u.scope_depts.length && u.level !== "manager" ? " · " + esc(u.scope_depts.join(", ")) : "");
+    document.getElementById("scopeLine").textContent = {
+      director: "Company-wide view — performance, ROI, cost, salary and expense information for all departments.",
+      senior_manager: "Your departments (" + u.scope_depts.join(", ") + ") — aggregated performance, KPI results and aggregated ROI/cost. Individual pay is not available at this level.",
+      manager: "Your team — individual scorecards, KPI gaps, HR intervention and AI-assisted KPI setting. Pay and cost data are not available at this level."
+    }[u.level];
+    document.getElementById("toEmployeeLink").hidden = u.level === "director";
+    document.querySelectorAll("nav.tabs button").forEach(function (b) { if (s.nav.indexOf(b.dataset.view) === -1) b.remove(); });
+    document.querySelectorAll("main .view").forEach(function (sec) { if (s.nav.indexOf(sec.id.replace("view-", "")) === -1) sec.remove(); });
+    document.getElementById("govToolbar").hidden = u.level !== "director";
+    applyStateFromUrl();
+  }).catch(function (e) { document.querySelector("main").innerHTML = '<p class="err">' + esc(e.message) + "</p>"; });
 })();
 </script>
 </body>

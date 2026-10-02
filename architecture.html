@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glocomp Architecture &amp; Data Flow</title>
+<link rel="stylesheet" href="assets/base.css">
+<link rel="stylesheet" href="assets/gc.css">
+<style>
+  .arch { max-width: 1080px; margin: 0 auto; padding: 24px 16px 60px; }
+  .layer { display: grid; grid-template-columns: 190px 1fr; gap: 14px; align-items: stretch; }
+  @media (max-width: 760px) { .layer { grid-template-columns: 1fr; } }
+  .layer .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); font-weight: 700; padding-top: 12px; }
+  .layer .lbl small { display: block; text-transform: none; letter-spacing: 0; font-weight: 500; margin-top: 3px; }
+  .boxes { display: flex; gap: 10px; flex-wrap: wrap; }
+  .box { flex: 1 1 170px; border: 1px solid var(--border); background: var(--surface-1); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.45; }
+  .box b { color: var(--text-primary); display: block; font-size: 13px; margin-bottom: 2px; }
+  .box code { font-size: 11px; }
+  .box.target { border: 1.5px dashed var(--baseline); background: transparent; }
+  .down { text-align: center; color: var(--text-muted); font-size: 18px; line-height: 1; margin: 6px 0 6px 190px; }
+  @media (max-width: 760px) { .down { margin-left: 0; } }
+  .tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; margin: 4px 4px 0 0; text-transform: uppercase; letter-spacing: .03em; }
+  .t-in { background: color-mix(in srgb, var(--series-1) 15%, transparent); color: var(--series-1); }
+  .t-calc { background: color-mix(in srgb, var(--series-3) 18%, transparent); color: var(--series-3); }
+  .t-ai { background: color-mix(in srgb, #6d3fc0 16%, transparent); color: #6d3fc0; }
+  .t-acl { background: color-mix(in srgb, var(--status-critical) 14%, transparent); color: var(--status-critical); }
+  .t-sens { background: color-mix(in srgb, var(--status-warning) 24%, transparent); color: #8a6300; }
+  .viz-root[data-theme="dark"] .t-ai { color: #c5a8ff; }
+  .viz-root[data-theme="dark"] .t-sens { color: #ffd980; }
+  .legend-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 18px; }
+  h2 { font-size: 15px; margin: 28px 0 8px; }
+  .arch p, .arch li { font-size: 13px; color: var(--text-secondary); line-height: 1.55; }
+</style>
+</head>
+<body>
+<div class="viz-root" id="root">
+<div class="arch">
+  <div class="row"><h1 style="font-size:20px;margin:0;">Technology stack &amp; data flow</h1><span class="spacer"></span><a class="btn" href="/dashboard">Dashboard</a><button class="theme-toggle" id="themeToggle" type="button">Switch to dark</button></div>
+  <p class="card-sub" style="font-size:13px;margin-top:6px;">Solid boxes = running in this prototype (verified in the code). Dashed boxes = production target. No data is shown on this page.</p>
+  <div class="legend-row">
+    <span class="tag t-in">Data enters</span><span class="tag t-calc">Calculation</span><span class="tag t-ai">AI used</span><span class="tag t-acl">Access control</span><span class="tag t-sens">Sensitive data protected</span>
+  </div>
+
+  <div class="layer"><div class="lbl">1 · Enterprise systems<small>systems of record</small></div><div class="boxes">
+    <div class="box target"><b>Workday / HRIS</b>Employees, hierarchy, roles, compensation<br><span class="tag t-in">Data enters</span><span class="tag t-sens">Pay</span></div>
+    <div class="box target"><b>Finance / ERP</b>Expense claims, invoices, collections, NGP<br><span class="tag t-in">Data enters</span><span class="tag t-sens">Claims</span></div>
+    <div class="box target"><b>CRM</b>Deals, revenue, pipeline, retention, win rate<br><span class="tag t-in">Data enters</span></div>
+    <div class="box target"><b>PSA / survey tools</b>Utilisation, CSAT, pulse &amp; onboarding surveys<br><span class="tag t-in">Data enters</span><span class="tag t-sens">Survey</span></div>
+    <div class="box"><b>Prototype sources</b><code>hr_dummy_dataset.xlsx</code> (synthetic HR) + anonymised commercial roster<br><span class="tag t-in">Data enters</span></div>
+  </div></div>
+  <div class="down">↓</div>
+
+  <div class="layer"><div class="lbl">2 · Data integration<small>extract · validate · pseudonymise</small></div><div class="boxes">
+    <div class="box"><b>Seed builder</b><code>scripts/build_seed.py</code> — runs offline, links roster to synthetic HR ids, replaces names, generates dummy KPI/expense data<br><span class="tag t-sens">No real names leave this step</span></div>
+    <div class="box target"><b>Scheduled ETL</b>Nightly sync (Workday/ERP/CRM APIs → Supabase) using a service-role key held only in the integration job<br><span class="tag t-in">Data enters</span></div>
+  </div></div>
+  <div class="down">↓</div>
+
+  <div class="layer"><div class="lbl">3 · Backend data store</div><div class="boxes">
+    <div class="box"><b>Seed (read-only)</b><code>api/_lib/data/seed.json</code> — bundled inside the function, never served as a file (blocked in <code>vercel.json</code>)<br><span class="tag t-sens">Server-side only</span></div>
+    <div class="box"><b>State store</b>Weightage, agreements, HR cases, AI suggestions, audit log — JSON file (<code>/tmp</code> on Vercel: ephemeral)</div>
+    <div class="box target"><b>Supabase Postgres</b><code>supabase/schema.sql</code> — tables + row-level security mirroring the API policy; PITR backups<br><span class="tag t-acl">RLS</span><span class="tag t-sens">Pay tables Director-only</span></div>
+  </div></div>
+  <div class="down">↓</div>
+
+  <div class="layer"><div class="lbl">4 · Processing &amp; KPI calculation</div><div class="boxes">
+    <div class="box"><b>KPI scoring</b><code>scoring.py</code> — attainment, capped credit, weighted points, financial / non-financial buckets, 4-quarter trend<br><span class="tag t-calc">Calculation</span></div>
+    <div class="box"><b>HR gap analysis</b><code>hr.py</code> — gap → affected KPI → cause (pattern, peers, leading indicators, survey) → action → escalation<br><span class="tag t-calc">Calculation</span></div>
+  </div></div>
+  <div class="down">↓</div>
+
+  <div class="layer"><div class="lbl">5 · ROI / performance engine</div><div class="boxes">
+    <div class="box"><b>ROI engine</b><code>roi.py</code> — Return (attributed NGP) vs. salary + variable + expenses + other employment cost, per person / team / department<br><span class="tag t-calc">Calculation</span><span class="tag t-sens">Uses pay data — results filtered by role</span></div>
+  </div></div>
+  <div class="down">↓</div>
+
+  <div class="layer"><div class="lbl">6 · AI KPI assistance</div><div class="boxes">
+    <div class="box"><b>Suggestion engine</b><code>ai_kpi.py</code> — mock rules engine today; seam for an LLM. Input: KPI history, KPI library, peer medians only<br><span class="tag t-ai">AI used</span><span class="tag t-sens">No pay / expense / survey data sent</span></div>
+    <div class="box"><b>Human in the loop</b>Suggestions stay "pending review" until a manager edits, accepts and applies them<br><span class="tag t-acl">Manager approval</span></div>
+  </div></div>
+  <div class="down">↓</div>
+
+  <div class="layer"><div class="lbl">7 · API &amp; access control<small>Vercel Python function</small></div><div class="boxes">
+    <div class="box"><b>Authentication</b><code>auth.py</code> — HMAC-signed HttpOnly SameSite=Strict cookie; prototype sign-in = access code + persona (target: Supabase Auth / SSO)<br><span class="tag t-acl">Access control</span></div>
+    <div class="box"><b>Authorisation</b><code>policy.py</code> — row scope (who) + field rules (what) per level; checked on every endpoint<br><span class="tag t-acl">Access control</span><span class="tag t-sens">Field-level filtering</span></div>
+    <div class="box"><b>Endpoints</b><code>router.py</code> — builds each response field-by-field; CSRF/origin checks; no-store; audit log<br><span class="tag t-acl">Access control</span></div>
+  </div></div>
+  <div class="down">↓</div>
+
+  <div class="layer"><div class="lbl">8 · Role-based dashboard<small>static pages on Vercel CDN</small></div><div class="boxes">
+    <div class="box"><b>login.html</b>Persona + access code</div>
+    <div class="box"><b>index.html</b>Management dashboard — tabs rendered from the server's nav list; each tab fetches its own endpoint</div>
+    <div class="box"><b>employee-dashboard.html</b>My Performance — own scorecard only, no pay data in page or API response</div>
+  </div></div>
+  <div class="down">↓</div>
+
+  <div class="layer"><div class="lbl">9 · Users</div><div class="boxes">
+    <div class="box"><b>Director</b>Company, all departments, ROI, cost, salary, expense claims, HR/exec decisions</div>
+    <div class="box"><b>Senior Manager</b>Own departments: scorecards, aggregated ROI/cost (n ≥ 5), escalated cases, role templates</div>
+    <div class="box"><b>Manager</b>Own team: scorecards, KPI gaps, HR cases, AI KPI review, individual agreements (±15 pts)</div>
+    <div class="box"><b>Employee</b>Own score, KPIs, targets, gaps, weightage (view only), improvement focus</div>
+  </div></div>
+
+  <h2>Where things happen</h2>
+  <ul>
+    <li><b>Data enters</b> only through integration (layer 2). The browser never uploads HR, pay or KPI data.</li>
+    <li><b>Calculations</b> run server-side (layers 4–5), so the formulas and inputs can't be altered in the browser, and pay inputs never reach roles that may not see them.</li>
+    <li><b>AI</b> is used only in layer 6, on non-sensitive KPI history, and can only propose — a manager decides.</li>
+    <li><b>Access control</b> is enforced in layer 7 on every request (and, in the target design, again by RLS in layer 3).</li>
+    <li><b>Sensitive data</b> (salary, pay band, expense claims, individual surveys) is filtered before a response is built; senior managers get only aggregates of 5+ people.</li>
+  </ul>
+  <p>Details: <code>GLOCOMP.md</code> (architecture, reliability &amp; demo flow) and <code>SECURITY.md</code> in the repository.</p>
+</div>
+</div>
+<script src="assets/gc.js"></script>
+<script>GC.theme(document.getElementById("root"), document.getElementById("themeToggle"));</script>
+</body>
+</html>

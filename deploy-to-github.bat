@@ -15,7 +15,7 @@ if errorlevel 1 (
 )
 
 git init -b main
-git add index.html employee-dashboard.html vercel.json
+git add -A
 git commit -m "Initial commit: commercial return dashboard (employer + employee views)"
 
 where gh >nul 2>nul
@@ -38,6 +38,6 @@ if errorlevel 1 (
 
 echo.
 echo Next: go to https://vercel.com/new, click "Import" next to this GitHub repo, and deploy.
-echo No build settings needed - it's static HTML. vercel.json already routes /employee and /employer.
+echo No build settings needed. Set SESSION_SECRET and DEMO_ACCESS_CODE in Vercel env vars - see README.md.
 
 endlocal

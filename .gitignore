@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+# runtime state written by the local dev server (weightage changes, HR cases, AI suggestions, audit log)
+data/runtime/
+# raw source dataset — download it again from the link in README.md; only the derived api/_lib/data/seed.json is committed
+data/source/
+.vercel/
+.env*
