@@ -20,7 +20,7 @@ Checked against the code on 2026-10-02.
 | Backend | Python standard library: `auth`, `policy`, `scoring`, `roi`, `hr`, `ai_kpi`, `router` in `api/_lib/` | Same code, with a storage adapter for Supabase |
 | Data store | `api/_lib/data/seed.json` (read-only) + JSON state file (`/tmp` on Vercel) | **Supabase Postgres** with RLS (`supabase/schema.sql`) |
 | Auth | Signed HttpOnly cookie; demo access code + persona | Supabase Auth / SSO with MFA |
-| AI | Rules-based mock (`ai_kpi.py`, engine `mock-rules-v1`) | LLM behind the same interface, still requiring human approval |
+| AI | LLM via `llm.py` (Anthropic Claude by default, or any OpenAI-compatible API) when a key is set; rules engine `mock-rules-v1` as automatic fallback | Same, with human approval required |
 | Sources | `hr_dummy_dataset.xlsx` (synthetic HR) + anonymised commercial roster | Workday/HRIS, ERP, CRM, PSA, survey tool |
 
 > **Supabase is not used yet.** Before this upgrade, the deployed app was two static HTML files with all data embedded and no backend. Supabase is the next step, and the schema with RLS is ready in `supabase/schema.sql`.
@@ -37,7 +37,7 @@ flowchart TD
   I --> DB[(3 · Supabase Postgres + RLS<br/>prototype: seed.json + state file)]:::acl
   DB --> K[4 · KPI calculation<br/>scoring.py · hr.py]:::calc
   K --> R[5 · ROI / performance engine<br/>roi.py]:::calc
-  K --> AI[6 · AI KPI assistance<br/>ai_kpi.py — KPI history only, no pay]:::ai
+  K --> AI[6 · AI KPI assistance<br/>ai_kpi.py + llm.py — KPI history only, no pay<br/>rules fallback]:::ai
   R --> API[7 · API + ACCESS CONTROL<br/>auth.py · policy.py · router.py<br/>row scope + field filtering]:::acl
   AI --> API
   API --> UI[8 · Role-based dashboard<br/>login · index · employee pages]
@@ -67,6 +67,18 @@ Rebuild the seed with `pip install openpyxl`, then `python scripts/build_seed.py
 - `DEMO_ACCESS_CODE`
 
 Without them, sign-in is refused (fail closed).
+
+**Optional: turn on the LLM for the AI KPI Assistant.** Without these, the rules engine is used.
+
+| Variable | Value |
+|---|---|
+| `LLM_API_KEY` | your API key (`ANTHROPIC_API_KEY` also works) |
+| `LLM_PROVIDER` | `anthropic` (default) or `openai` for any OpenAI-compatible API (OpenAI, Groq, OpenRouter, Gemini's OpenAI endpoint) |
+| `LLM_MODEL` | default `claude-haiku-4-5`; required when the provider is `openai` |
+| `LLM_BASE_URL` | optional, for a non-default endpoint |
+| `LLM_TIMEOUT` | optional, seconds (default 20; Vercel `maxDuration` is 30) |
+
+For local runs, put the same lines in a `.env` file in the project root (git-ignored). `dev_server.py` loads it and prints which engine is active.
 
 ## 3. How the numbers are calculated
 
@@ -115,6 +127,12 @@ These are illustrative starting values to agree with each function head. The ori
 ## 5. AI-assisted KPI workflow
 
 Historical performance → AI suggestions (`pending_review`) → manager reviews → manager edits the target and/or weight → manager accepts or rejects → **Approve & apply** → the KPI becomes part of the evaluation. It is tagged *"AI-suggested, approved by …"* on the employee's own page.
+
+**Engine.** If an LLM key is configured, the LLM generates the suggestions; otherwise the rules engine does.
+- **What the LLM sees:** role, department, current KPIs with 4 quarters of history, peer median attainment, candidate KPIs and leading-indicator links. It never sees names, employee IDs, pay, expenses or survey data (this is covered by a test).
+- **Validation:** every LLM suggestion is checked against the real data before a manager sees it. It is dropped if the KPI doesn't exist or is already in use, if the target is more than 2× away from the current target or the person's own average, if the weight is outside 1–70, or if it repeats a KPI or has no reason. Name, bucket, unit, direction and current values always come from our data. Server-computed evidence (4-quarter attainment, history) is shown first.
+- **Fallback:** if the LLM errors, times out, returns invalid JSON or nothing valid, the rules engine runs instead. The manager sees a notice, and the reason is written to the audit log.
+- Each suggestion shows the engine that produced it.
 
 The engine proposes three kinds of change:
 - **Re-target:** the target was beaten in every quarter, or missed team-wide.
@@ -197,7 +215,7 @@ Sign in at `/login`. Local access code: `glocomp-demo`.
 1. Move state to Supabase so changes and cases persist.
 2. Replace demo sign-in with SSO.
 3. Connect real KPI sources.
-4. Swap the mock AI for an LLM, keeping the human-approval gate and the no-pay-data rule.
+4. ~~Swap the mock AI for an LLM~~ Done (`llm.py`). Next: log LLM suggestion acceptance rates to compare the LLM with the rules engine.
 5. Apply agreed changes from the next period, with versioned history.
 6. Move inline scripts to files and tighten the CSP.
 7. Notifications for escalations.

@@ -2,7 +2,7 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "functions": {
-    "api/app.py": { "includeFiles": "api/_lib/**", "maxDuration": 10 }
+    "api/app.py": { "includeFiles": "api/_lib/**", "maxDuration": 30 }
   },
   "redirects": [
     { "source": "/api/_lib/:path*", "destination": "/login", "permanent": false },

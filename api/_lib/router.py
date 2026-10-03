@@ -473,7 +473,7 @@ def hr_action(req):
 def ai_list(req):
     t = _target(req)
     policy.require_manage(req.user, t["id"])
-    return {"employee": _public_user(t), "suggestions": store.suggestions(t["id"]), "engine": ai_kpi.ENGINE,
+    return {"employee": _public_user(t), "suggestions": store.suggestions(t["id"]), "engine": ai_kpi.active_engine(),
             "scorecard": scoring.summary(scoring.scorecard(t))}
 
 
@@ -481,11 +481,11 @@ def ai_list(req):
 def ai_generate(req):
     t = _target(req, "employee_id")
     policy.require_manage(req.user, t["id"])
-    items = ai_kpi.generate(t, scoring.scorecard(t))
+    items, meta = ai_kpi.generate_with_meta(t, scoring.scorecard(t))
     kept = [s for s in store.suggestions(t["id"]) if s["status"] == "applied"]
     store.set_suggestions(t["id"], kept + items)
-    store.audit(req.user, "ai.generate", t["id"], {"count": len(items), "engine": ai_kpi.ENGINE})
-    return {"suggestions": kept + items, "engine": ai_kpi.ENGINE}
+    store.audit(req.user, "ai.generate", t["id"], {"count": len(items), "engine": meta["engine"], "fallback": meta["fallback"]})
+    return {"suggestions": kept + items, "engine": meta["engine"], "fallback": meta["fallback"]}
 
 
 @route("POST", "/api/ai/decide")

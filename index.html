@@ -1271,17 +1271,23 @@ Return = attributed NGP · Total cost = salary + variable pay + approved expense
     host.innerHTML =
       '<div class="stepper" id="aiStepper"></div>' +
       '<div class="notice"><b>The AI never assigns KPIs on its own.</b> Suggestions are stored as "pending review" and have no effect on anyone\'s score until a manager accepts and applies them. ' +
-      "Engine: rules-based mock (no external AI API configured) — it only sees KPI history, the role's KPI library and peer medians; never pay, expenses or survey answers.</div>" +
+      '<span id="aiEngine">Engine: …</span> It only sees KPI history, the role\'s KPI library and peer medians — never names, pay, expenses or survey answers.</div>' +
       '<div class="row" style="margin-bottom:14px;"><label class="field" style="min-width:280px;"><span>Team member</span><select id="aiPerson">' +
       aiState.people.map(function (p) { return '<option value="' + esc(p.id) + '"' + (p.id === aiState.selected ? " selected" : "") + ">" + esc(p.name) + " — " + esc(p.title) + "</option>"; }).join("") +
       '</select></label><span class="spacer"></span><button class="btn primary" type="button" id="aiGenerate">Generate suggestions from history</button></div><div id="aiBody"><p class="loading">Loading…</p></div>';
     document.getElementById("aiPerson").addEventListener("change", function (e) { loadAiFor(e.target.value); });
     document.getElementById("aiGenerate").addEventListener("click", function () {
-      GC.api("/api/ai/generate", { body: { employee_id: aiState.selected } }).then(function () { return loadAiFor(aiState.selected); }).catch(function (e) { GC.toast(e.message); });
+      var btn = this; btn.disabled = true; btn.textContent = "Generating…";
+      GC.api("/api/ai/generate", { body: { employee_id: aiState.selected } }).then(function (r) {
+        if (r.fallback) GC.toast("LLM unavailable (" + r.fallback + ") — used the rules engine instead.");
+        return loadAiFor(aiState.selected);
+      }).catch(function (e) { GC.toast(e.message); }).then(function () { btn.disabled = false; btn.textContent = "Generate suggestions from history"; });
     });
   }
   function renderAiBody() {
     var d = aiState.data, list = d.suggestions;
+    var engEl = document.getElementById("aiEngine");
+    if (engEl) engEl.textContent = d.engine === "mock-rules-v1" ? "Engine: rules-based (no LLM API key configured)." : "Engine: LLM " + d.engine + ", with the rules engine as automatic fallback.";
     var pending = list.filter(function (s) { return s.status === "pending_review"; }).length;
     var accepted = list.filter(function (s) { return s.status === "accepted"; }).length;
     var applied = list.filter(function (s) { return s.status === "applied"; }).length;
@@ -1296,7 +1302,7 @@ Return = attributed NGP · Total cost = salary + variable pay + approved expense
       '</p></div><span class="spacer"></span>' + GC.spark(sc.trend, 120, 30) + '<button class="btn small" type="button" data-open-card="' + esc(d.employee.id) + '">Scorecard →</button></div></div>' +
       (list.length ? list.map(function (s) {
         var lock = s.status === "applied";
-        return '<div class="sugg ' + s.status + '" data-sid="' + esc(s.id) + '"><div class="sugg-head"><div><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;">' + typeLabel[s.type] + " · confidence " + esc(s.confidence) + '</div><div class="t">Suggested KPI: ' + esc(s.name) + ' <span class="bucket-chip ' + s.bucket + '">' + (s.bucket === "financial" ? "Financial" : "Non-financial") + "</span></div></div>" +
+        return '<div class="sugg ' + s.status + '" data-sid="' + esc(s.id) + '"><div class="sugg-head"><div><div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.03em;">' + typeLabel[s.type] + " · confidence " + esc(s.confidence) + (s.engine ? " · " + esc(s.engine) : "") + '</div><div class="t">Suggested KPI: ' + esc(s.name) + ' <span class="bucket-chip ' + s.bucket + '">' + (s.bucket === "financial" ? "Financial" : "Non-financial") + "</span></div></div>" +
           badge(s.status === "accepted" ? "good" : s.status === "rejected" ? "critical" : s.status === "applied" ? "good" : "warning", s.status.replace("_", " ") + (s.edited ? " · edited" : "")) + "</div>" +
           '<div class="sugg-grid">' +
             '<label class="field"><span>Suggested target' + (s.current_target != null ? " (now " + GC.fmt(s.current_target, s.unit) + ")" : "") + '</span><input class="inp" type="number" step="any" data-f="target" value="' + s.suggested_target + '"' + (lock ? " disabled" : "") + "></label>" +

@@ -1,4 +1,4 @@
-"""AI-assisted KPI creation (prototype).
+"""AI-assisted KPI creation.
 
 Workflow: historical performance -> AI suggestions -> manager reviews -> manager edits target/weight ->
 manager accepts/rejects -> manager approves & applies -> KPI becomes part of the employee's evaluation.
@@ -6,16 +6,22 @@ manager accepts/rejects -> manager approves & applies -> KPI becomes part of the
 Suggestions are stored with status "pending_review" and have NO effect on scoring until a person with management
 authority over the employee explicitly applies them (enforced in router.py + policy.require_manage).
 
-Engine: a deterministic rules-based mock ("mock-rules-v1"), because no LLM API is configured for this prototype.
-`generate()` is the seam for a real model: give it the same context dict (KPI history + library + peer medians —
-never compensation, expense or survey data) and require the same JSON output shape.
+Engines:
+  * LLM (when an API key is configured — see llm.py). The model receives ONLY KPI history, the role's KPI library,
+    peer medians and leading-indicator links: no names, no pay, cost, expense or survey data. Every suggestion it
+    returns is validated against the real data (KPI must exist, numbers in range, one suggestion per KPI) and
+    anything that fails is dropped. Bucket, unit, direction and current values always come from our data, not the model.
+  * Rules ("mock-rules-v1"): deterministic fallback used when no key is set, or the LLM errors / times out /
+    returns nothing valid. The fallback reason is returned to the UI and written to the audit log.
 """
+import json
+import math
 import statistics
 import uuid
 
-from . import hr, scoring, store
+from . import hr, llm, scoring, store
 
-ENGINE = "mock-rules-v1"
+ENGINE = "mock-rules-v1"  # rules engine id (also the fallback)
 MAX_SUGGESTIONS = 4
 NEW_KPI_WEIGHT = 15
 
@@ -54,7 +60,7 @@ def build_context(u, card):
     }
 
 
-def generate(u, card):
+def _rules_generate(u, card):
     ctx = build_context(u, card)
     out = []
 
@@ -120,6 +126,173 @@ def generate(u, card):
             evidence=["History: " + ", ".join("%s %s" % (h["period"], hr._fmt(h["actual"], c["unit"])) for h in hist), "Formula: " + c["formula"]])
     return out[:MAX_SUGGESTIONS]
 
+
+# ------------------------------------------------------------------ LLM engine
+
+def active_engine():
+    """Engine that will be tried first for the next generation."""
+    return llm.label() or ENGINE
+
+
+SYSTEM_PROMPT = """You are a KPI-setting assistant inside a commercial performance platform. A manager will review,
+edit, accept or reject every suggestion you make; nothing you say is applied automatically.
+
+Task: from 4 quarters of KPI history, propose at most 4 changes to ONE employee's KPI scorecard. Allowed types:
+- "retarget": change the target of a KPI in current_kpis (e.g. target beaten every quarter so it no longer
+  differentiates, or missed every quarter AND the peer median is also low so it looks unrealistic). Do NOT lower a
+  target only because this individual is missing it while peers hit it.
+- "reweight": change the weight_in_bucket (1-70) of a KPI in current_kpis, e.g. to focus on the KPI losing the most
+  points. Only for a bucket that has more than one KPI. Other KPIs in the bucket are rebalanced automatically.
+- "new_kpi": add a KPI from candidates (never one already in current_kpis), typically a leading indicator for a
+  lagging KPI that is below target. Suggest a weight_in_bucket between 5 and 30.
+
+Rules:
+- Use only the numbers provided. Do not invent data. Cite the specific numbers that justify each suggestion.
+- Targets are in the KPI's own unit. For direction "lower" (e.g. days), a tougher target is a smaller number.
+- At most one suggestion per KPI. Fewer, well-justified suggestions beat many weak ones; an empty list is allowed.
+- Be fair to the employee: distinguish an individual gap from a team-wide or target-calibration problem.
+- confidence: "high" only when the 4-quarter pattern is consistent; otherwise "medium" or "low".
+
+Respond with ONLY a JSON object, no prose and no markdown fences, in exactly this shape:
+{"suggestions": [{"type": "retarget|reweight|new_kpi", "kpi": "<key>", "suggested_target": <number>,
+  "suggested_weight": <integer>, "confidence": "high|medium|low",
+  "reason": "<1-3 sentences a manager can read>", "evidence": ["<short fact with numbers>", "..."]}]}"""
+
+
+def _llm_context(u, card):
+    """Slim, de-identified view of build_context() for the prompt (no name, id, source labels or pay)."""
+    ctx = build_context(u, card)
+    cur = []
+    for k in ctx["current_kpis"]:
+        pm, n = hr._peer_median(u, k["key"])
+        cur.append({"key": k["key"], "name": k["name"], "bucket": k["bucket"], "unit": k["unit"], "direction": k["direction"],
+                    "target": k["target"], "actual": k["actual"], "attainment_pct": k["attainment_pct"],
+                    "weight_in_bucket": k["weight_in_bucket"], "points_lost": k["points_lost"],
+                    "history": k["history"], "peer_median_attainment_pct": round(pm, 1) if pm is not None else None,
+                    "peers": n, "leading_indicators": hr.LEADING.get(k["key"], [])})
+    cands = []
+    for key, c in ctx["candidates"].items():
+        peers = c["peer_actuals"]
+        cands.append({"key": key, "name": c["name"], "bucket": c["bucket"], "unit": c["unit"], "direction": c["direction"],
+                      "formula": c["formula"], "history": c["history"],
+                      "peer_median_actual": statistics.median(peers) if len(peers) >= 3 else None})
+    buckets = {}
+    for k in ctx["current_kpis"]:
+        buckets[k["bucket"]] = buckets.get(k["bucket"], 0) + 1
+    return {"role": ctx["role"], "department": ctx["department"], "period": ctx["period"],
+            "bucket_weights": ctx["weightage"], "kpis_per_bucket": buckets, "current_kpis": cur, "candidates": cands}
+
+
+def _parse_json(text):
+    t = (text or "").strip()
+    if t.startswith("```"):
+        t = t.strip("`")
+        t = t[t.index("\n") + 1:] if "\n" in t else t
+    a, b = t.find("{"), t.rfind("}")
+    if a < 0 or b <= a:
+        raise llm.LLMError("LLM reply contained no JSON object")
+    try:
+        data = json.loads(t[a:b + 1])
+    except ValueError:
+        raise llm.LLMError("LLM reply was not valid JSON")
+    items = data.get("suggestions") if isinstance(data, dict) else None
+    if not isinstance(items, list):
+        raise llm.LLMError("LLM JSON had no 'suggestions' list")
+    return items
+
+
+def _num(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+
+def _validate(raw_items, u, card, engine):
+    """Keep only suggestions that are consistent with the real data. Everything descriptive comes from our data."""
+    cur = {k["key"]: k for k in card["kpis"]}
+    ctx = build_context(u, card)
+    cands = ctx["candidates"]
+    per_bucket = {}
+    for k in card["kpis"]:
+        per_bucket[k["bucket"]] = per_bucket.get(k["bucket"], 0) + 1
+    out, seen = [], set()
+    for r in raw_items:
+        if len(out) >= MAX_SUGGESTIONS:
+            break
+        if not isinstance(r, dict):
+            continue
+        typ, key = r.get("type"), r.get("kpi")
+        if typ not in ("retarget", "reweight", "new_kpi") or not isinstance(key, str) or key in seen:
+            continue
+        reason = r.get("reason")
+        if not isinstance(reason, str) or not reason.strip():
+            continue
+        tgt, w = r.get("suggested_target"), r.get("suggested_weight")
+        if typ in ("retarget", "reweight"):
+            if key not in cur:
+                continue
+            k = cur[key]
+            seq = [h["attainment"] for h in k["history"]] + [k["attainment_pct"]]
+            facts = ["4-quarter attainment: " + ", ".join("%.0f%%" % a for a in seq)]
+            base = dict(name=k["name"], bucket=k["bucket"], unit=k["unit"], direction=k["direction"],
+                        current_target=k["target"], current_weight=k["weight_in_bucket"])
+            if typ == "retarget":
+                if not _num(tgt) or tgt <= 0 or not 0.5 <= tgt / k["target"] <= 2.0:
+                    continue  # missing or implausible (more than 2x away from the current target)
+                tgt = _round_target(tgt, k["unit"])
+                if tgt == k["target"]:
+                    continue
+                w = k["weight_in_bucket"]
+            else:
+                if per_bucket.get(k["bucket"], 0) < 2 or not _num(w) or int(w) != w or not 1 <= w <= 70 or w == k["weight_in_bucket"]:
+                    continue
+                tgt, w = k["target"], int(w)
+        else:
+            if key not in cands or key in cur:
+                continue
+            c = cands[key]
+            hist = c["history"]
+            own_mean = statistics.mean(h["actual"] for h in hist)
+            if not _num(tgt) or tgt <= 0 or (own_mean > 0 and not 0.5 <= tgt / own_mean <= 2.0):
+                continue  # implausible vs. the person's own history
+            tgt = _round_target(tgt, c["unit"])
+            w = int(w) if _num(w) and int(w) == w and 1 <= w <= 70 else NEW_KPI_WEIGHT
+            facts = ["History: " + ", ".join("%s %s" % (h["period"], hr._fmt(h["actual"], c["unit"])) for h in hist),
+                     "Formula: " + c["formula"]]
+            base = dict(name=c["name"], bucket=c["bucket"], unit=c["unit"], direction=c["direction"],
+                        current_target=None, current_weight=0)
+        ev = [e.strip()[:200] for e in (r.get("evidence") or []) if isinstance(e, str) and e.strip()][:3]
+        conf = r.get("confidence") if r.get("confidence") in ("high", "medium", "low") else "low"
+        seen.add(key)
+        out.append(dict(base, id="S-" + uuid.uuid4().hex[:8], type=typ, kpi=key, suggested_target=tgt, suggested_weight=w,
+                        confidence=conf, reason=reason.strip()[:600], evidence=facts + ev,
+                        status="pending_review", engine=engine, generated_at=store.now_iso(), edited=False, decided_by=None))
+    return out
+
+
+def _llm_generate(u, card):
+    user = ("Employee scorecard context (JSON). Propose up to %d KPI changes.\n\n%s"
+            % (MAX_SUGGESTIONS, json.dumps(_llm_context(u, card), separators=(",", ":"))))
+    return _validate(_parse_json(llm.complete(SYSTEM_PROMPT, user)), u, card, llm.label())
+
+
+def generate_with_meta(u, card):
+    """Returns (suggestions, meta). meta = {"engine": used engine, "fallback": reason or None}."""
+    if llm.configured():
+        try:
+            items = _llm_generate(u, card)
+            if items:
+                return items, {"engine": llm.label(), "fallback": None}
+            reason = "LLM returned no valid suggestions"
+        except llm.LLMError as e:
+            reason = str(e)[:200]
+        items = _rules_generate(u, card)
+        for s in items:
+            s["engine"] = ENGINE + " (fallback)"
+        return items, {"engine": ENGINE, "fallback": reason}
+    return _rules_generate(u, card), {"engine": ENGINE, "fallback": None}
+
+
+def generate(u, card):
+    return generate_with_meta(u, card)[0]
 
 def _rebalance(weights, key, new_w):
     """Set weights[key] = new_w and scale the others so the bucket still sums to 100 (integers)."""

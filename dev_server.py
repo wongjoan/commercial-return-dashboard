@@ -10,6 +10,16 @@ import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+
+# Optional local .env (git-ignored) for LLM_PROVIDER / LLM_API_KEY / LLM_MODEL etc. Real env vars take precedence.
+_env = os.path.join(ROOT, ".env")
+if os.path.exists(_env):
+    with open(_env, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 sys.path.insert(0, os.path.join(ROOT, "api"))
 from _lib import router  # noqa: E402
 
@@ -64,4 +74,6 @@ class Dev(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8000"))
     print("Glocomp demo on http://localhost:%d  (access code: glocomp-demo)" % port)
+    from _lib import ai_kpi  # noqa: E402
+    print("AI KPI engine: %s" % ai_kpi.active_engine())
     ThreadingHTTPServer(("127.0.0.1", port), Dev).serve_forever()
